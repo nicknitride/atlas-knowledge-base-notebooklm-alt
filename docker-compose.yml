@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-atlas}
+      POSTGRES_USER: ${POSTGRES_USER:-atlas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atlas}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    environment:
+      ATLAS_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-atlas}
+      ATLAS_DATABASE_USERNAME: ${POSTGRES_USER:-atlas}
+      ATLAS_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-atlas}
+      ATLAS_STORAGE_DIR: /data/uploads
+      ATLAS_WEB_ORIGIN: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - atlas-uploads:/data/uploads
+
+  web:
+    build: .
+    environment:
+      NEXT_PUBLIC_ATLAS_API_URL: ${NEXT_PUBLIC_ATLAS_API_URL:-http://localhost:8080}
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  atlas-uploads:

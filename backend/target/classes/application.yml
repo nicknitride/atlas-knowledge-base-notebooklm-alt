@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: atlas-api
+  datasource:
+    url: ${ATLAS_DATABASE_URL:jdbc:postgresql://localhost:5432/atlas}
+    username: ${ATLAS_DATABASE_USERNAME:atlas}
+    password: ${ATLAS_DATABASE_PASSWORD:atlas}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    baseline-on-migrate: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+server:
+  error:
+    include-message: never
+atlas:
+  storage-dir: ${ATLAS_STORAGE_DIR:./data/uploads}
+  web-origin: ${ATLAS_WEB_ORIGIN:http://localhost:3000}
