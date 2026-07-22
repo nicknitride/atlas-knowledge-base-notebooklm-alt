@@ -6,7 +6,7 @@ Next.js interface (`/`) and Spring Boot API (`/backend`).
 ## Run locally
 
 1. Copy `.env.example` to `.env` and replace the development password.
-2. Run `docker compose up --build`.
+2. Run `docker-compose up --build`.
 3. Open `http://localhost:3000`; the API health endpoint is at
    `http://localhost:8080/actuator/health`.
 
