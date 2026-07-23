@@ -155,12 +155,36 @@ export default function Sidebar({
     if (!files || files.length === 0 || !currentWorkspaceId) return
     setIsUploading(true)
     setUploadError(null)
+    const wsId = currentWorkspaceId
     try {
       for (let i = 0; i < files.length; i++) {
-        await uploadDocument(currentWorkspaceId, files[i])
+        await uploadDocument(wsId, files[i])
       }
-      await loadWorkspaceData(currentWorkspaceId)
+      // Initial fetch to show the document immediately
+      await loadWorkspaceData(wsId)
       onRefresh()
+
+      // Poll every 2s until all documents are out of PENDING/PROCESSING state
+      const deadline = Date.now() + 2 * 60 * 1000 // 2 minute timeout
+      const intervalId = setInterval(async () => {
+        if (Date.now() > deadline) {
+          clearInterval(intervalId)
+          return
+        }
+        try {
+          const docs = await fetchDocuments(wsId)
+          setDocuments(docs)
+          const stillProcessing = docs.some(
+            (d) => d.status === 'PENDING' || d.status === 'PROCESSING'
+          )
+          if (!stillProcessing) {
+            clearInterval(intervalId)
+            onRefresh()
+          }
+        } catch {
+          clearInterval(intervalId)
+        }
+      }, 2000)
     } catch (err: any) {
       setUploadError(err.message || 'Failed to upload document')
     } finally {
