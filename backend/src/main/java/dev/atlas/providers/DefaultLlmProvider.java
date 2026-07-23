@@ -192,6 +192,19 @@ public class DefaultLlmProvider implements LlmProvider {
     return response;
   }
 
+  private String generateGemini(List<ChatMessage> messages) throws Exception{
+    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"
+              + geminiModel + ":generateContent?key=" + geminiApiKey);
+    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+    conn.setRequestMethod("POST");
+    conn.setDoOutput(true);
+    conn.setRequestProperty("Content-Type", "application/json");
+
+    
+
+    return "";
+  }
+
   private String escapeJson(String text) {
     return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"";
   }

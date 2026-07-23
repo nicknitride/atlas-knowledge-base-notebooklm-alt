@@ -21,6 +21,9 @@ services:
       ATLAS_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-atlas}
       ATLAS_STORAGE_DIR: /data/uploads
       ATLAS_WEB_ORIGIN: http://localhost:3000
+      ATLAS_PROVIDER_TYPE: ${ATLAS_PROVIDER_TYPE:-local}
+      ATLAS_GEMINI_API_KEY: ${ATLAS_GEMINI_API_KEY:-}
+      ATLAS_GEMINI_MODEL: ${ATLAS_GEMINI_MODEL:-gemini-2.0-flash}
     depends_on:
       postgres:
         condition: service_healthy
