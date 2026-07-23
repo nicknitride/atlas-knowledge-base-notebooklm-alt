@@ -1,0 +1,76 @@
+name: atlas_knowledge_base
+services:
+  api:
+    build:
+      context: /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      ATLAS_DATABASE_PASSWORD: change-me-before-exposing
+      ATLAS_DATABASE_URL: jdbc:postgresql://postgres:5432/atlas
+      ATLAS_DATABASE_USERNAME: atlas
+      ATLAS_GEMINI_API_KEY: <edited out>
+      ATLAS_GEMINI_MODEL: gemini-3.5-flash
+      ATLAS_PROVIDER_TYPE: gemini
+      ATLAS_STORAGE_DIR: /data/uploads
+      ATLAS_WEB_ORIGIN: http://localhost:3000
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: atlas-uploads
+        target: /data/uploads
+        volume: {}
+  postgres:
+    environment:
+      POSTGRES_DB: atlas
+      POSTGRES_PASSWORD: change-me-before-exposing
+      POSTGRES_USER: atlas
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    image: pgvector/pgvector:pg16
+    networks:
+      default: null
+    volumes:
+      - type: volume
+        source: postgres-data
+        target: /var/lib/postgresql/data
+        volume: {}
+  web:
+    build:
+      context: /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+    environment:
+      NEXT_PUBLIC_ATLAS_API_URL: http://localhost:8080
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+networks:
+  default:
+    name: atlas_knowledge_base_default
+volumes:
+  atlas-uploads:
+    name: atlas_knowledge_base_atlas-uploads
+  postgres-data:
+    name: atlas_knowledge_base_postgres-data

@@ -72,10 +72,16 @@ public class DefaultLlmProvider implements LlmProvider {
   public void stream(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
     try {
       String fullResponse = generate(messages);
-      String[] words = fullResponse.split("(?<=\\s)|(?=\\s)");
+      // Split on word boundaries so each chunk is a word followed by its trailing
+      // whitespace. This ensures spaces are never emitted as standalone SSE data
+      // lines (which the SSE spec would strip), while still preserving spacing
+      // between words when the frontend concatenates chunks.
+      String[] words = fullResponse.split("(?<=\\s)(?=\\S)");
       for (String word : words) {
-        chunkConsumer.accept(word);
-        Thread.sleep(15);
+        if (!word.isEmpty()) {
+          chunkConsumer.accept(word);
+          Thread.sleep(15);
+        }
       }
       onComplete.run();
     } catch (Exception e) {
@@ -223,6 +229,14 @@ public class DefaultLlmProvider implements LlmProvider {
       }
 
       StringBuilder body = new StringBuilder("{");
+
+      // Attach system instruction if present
+      if (systemText != null && !systemText.isBlank()) {
+          body.append("\"systemInstruction\":{\"parts\":[{\"text\":")
+              .append(escapeJson(systemText))
+              .append("}]},");
+      }
+
       body.append("\"contents\":[");
       boolean first = true;
       for (ChatMessage m : messages) {
@@ -235,6 +249,7 @@ public class DefaultLlmProvider implements LlmProvider {
               append(escapeJson(m.content())).append("}]}");
           first = false;
       }
+      body.append("]}"); // close contents array and root object
 
       try (OutputStream os = conn.getOutputStream()) {
           os.write(body.toString().getBytes(StandardCharsets.UTF_8));
@@ -260,6 +275,10 @@ public class DefaultLlmProvider implements LlmProvider {
           while (end > 0 && response.charAt(end - 1) == '\\') {
               end = response.indexOf("\"", end + 1);
           }
+
+                log.info("Request Content: "+ messages);
+      log.info("Request Proper: "+body);
+      log.info("Response: "+ response);
           return response.substring(start, end)
                          .replace("\\n", "\n")
                          .replace("\\\"", "\"")

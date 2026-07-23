@@ -29,14 +29,15 @@ server:
 atlas:
   storage-dir: ${ATLAS_STORAGE_DIR:./data/uploads}
   web-origin: ${ATLAS_WEB_ORIGIN:http://localhost:3000}
-    provider:
-      type: ${ATLAS_PROVIDER_TYPE:local}
-      ollama:
-        url: ${ATLAS_OLLAMA_URL:http://localhost:11434}
-        model: ${ATLAS_OLLAMA_MODEL:llama3}
-      openai:
-        api-key: ${ATLAS_OPENAI_API_KEY:}
-        model: ${ATLAS_OPENAI_MODEL:gpt-4o-mini}
-      gemini:
-        api-key: ${ATLAS_GEMINI_API_KEY:}
-        model: ${ATLAS_GEMINI_MODEL:gemini-2.0-flash}
+  provider:
+    type: ${ATLAS_PROVIDER_TYPE:local}
+    ollama:
+      url: ${ATLAS_OLLAMA_URL:http://localhost:11434}
+      model: ${ATLAS_OLLAMA_MODEL:llama3}
+    openai:
+      api-key: ${ATLAS_OPENAI_API_KEY:}
+      model: ${ATLAS_OPENAI_MODEL:gpt-4o-mini}
+    gemini:
+      api-key: ${ATLAS_GEMINI_API_KEY:}
+      model: ${ATLAS_GEMINI_MODEL:gemini-2.0-flash}
+      embedding-model-gemini: gemini-embedding-001

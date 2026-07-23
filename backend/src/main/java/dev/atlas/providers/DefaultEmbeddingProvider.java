@@ -27,6 +27,12 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
   @Value("${atlas.provider.openai.api-key:}")
   private String openAiApiKey;
 
+  @Value("${atlas.provider.gemini.api-key:}")
+  private String geminiApiKey;
+
+  @Value("${atlas.provider.gemini.embedding-model-gemini}")
+  private String geminiEmbeddingProvider;
+
   @Override
   public float[] embed(String text) {
     if ("ollama".equalsIgnoreCase(providerType)) {
@@ -40,6 +46,12 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
         return embedOpenAi(text);
       } catch (Exception e) {
         log.warn("OpenAI embedding failed, falling back to deterministic local embeddings: {}", e.getMessage());
+      }
+    } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
+      try {
+        return embedGemini(text);
+      } catch (Exception e) {
+        log.warn("Gemini embedding failed, falling back to deterministic local embeddings: {}", e.getMessage());
       }
     }
     return embedDeterministic(text);
@@ -128,6 +140,65 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
       vector[i] = Float.parseFloat(parts[i].trim());
     }
     return vector;
+  }
+
+  /**
+   * Parses a Gemini embedContent response.
+   * Gemini wraps values as: { "embedding": { "values": [...] } }
+   */
+  private float[] parseGeminiEmbeddingFromJson(String json) {
+    int idx = json.indexOf("\"values\":[");
+    if (idx == -1) return embedDeterministic(json);
+    int start = idx + "\"values\":[".length();
+    int end = json.indexOf("]", start);
+    String arrStr = json.substring(start, end);
+    String[] parts = arrStr.split(",");
+    float[] vector = new float[Math.min(parts.length, DIMENSION)];
+    for (int i = 0; i < vector.length; i++) {
+      vector[i] = Float.parseFloat(parts[i].trim());
+    }
+    return vector;
+  }
+
+  /**
+   * Calls the Gemini embedContent API.
+   *
+   * Endpoint:
+   *   POST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={apiKey}
+   *
+   * outputDimensionality is set to 1536 to match the pgvector column dimension used
+   * by the OpenAI and deterministic fallback embeddings.
+   */
+  private float[] embedGemini(String text) throws Exception {
+    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"+geminiEmbeddingProvider+":embedContent?key=" + geminiApiKey);
+    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+    conn.setRequestMethod("POST");
+    conn.setDoOutput(true);
+    conn.setRequestProperty("Content-Type", "application/json");
+
+    String payload = "{" +
+        "\"model\":\""+geminiEmbeddingProvider+"\"," +
+        "\"content\":{\"parts\":[{\"text\":" + escapeJson(text) + "}]}," +
+        "\"outputDimensionality\":" + DIMENSION +
+        "}";
+
+    try (OutputStream os = conn.getOutputStream()) {
+      os.write(payload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    int status = conn.getResponseCode();
+    if (status != 200) {
+      try (InputStream err = conn.getErrorStream()) {
+        String errBody = err != null ? new String(err.readAllBytes(), StandardCharsets.UTF_8) : "";
+        throw new RuntimeException("Gemini embedding HTTP " + status + ": " + errBody);
+      }
+    }
+
+    String response;
+    try (InputStream is = conn.getInputStream()) {
+      response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    return parseGeminiEmbeddingFromJson(response);
   }
 
   private String escapeJson(String text) {
