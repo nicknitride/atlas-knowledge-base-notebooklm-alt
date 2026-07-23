@@ -18,23 +18,23 @@ capabilities.
 - [x] Define the monorepo layout, module boundaries, and local development workflow for the TypeScript frontend and Java 21 / Spring Boot API.
 - [x] Establish configuration conventions: environment variables, typed configuration validation, secrets handling, and example `.env` files.
 - [x] Provision PostgreSQL with pgvector and create versioned database migrations for users, workspaces, documents, chunks, conversations, messages, and citations.
-- [ ] Implement workspace CRUD with strict workspace scoping for documents, chunks, conversations, searches, and generated answers.
-- [ ] Build the responsive workspace UI: workspace switcher, empty states, document list, chat view, source panel, loading states, and keyboard-accessible controls.
+- [x] Implement workspace CRUD with strict workspace scoping for documents, chunks, conversations, searches, and generated answers.
+- [x] Build the responsive workspace UI: workspace switcher, empty states, document list, chat view, source panel, loading states, and keyboard-accessible controls.
 - [x] Implement document upload with file-size/type validation and persistent object/file storage mounted through Docker volumes.
 - [x] Implement robust PDF, Markdown, and plain-text extraction; retain source names, page/section boundaries, and extraction failures for user review.
 - [x] Define a deterministic chunking strategy that preserves document location metadata needed for citations.
-- [ ] Add an asynchronous ingestion workflow that tracks each document through upload, parsing, chunking, embedding, indexing, completion, and failure.
-- [ ] Implement embeddings through an initial provider adapter and store chunk vectors in pgvector.
-- [ ] Implement workspace-constrained vector retrieval with relevance thresholds and source-location metadata.
-- [ ] Implement a grounded chat pipeline: retrieve context, construct a constrained prompt, call the model, and decline or qualify answers unsupported by the retrieved sources.
-- [ ] Stream chat responses from the API to the UI, including cancel/retry behavior and recoverable provider errors.
-- [ ] Persist conversations and messages per workspace; support starting a chat, reopening a chat, renaming it, and deleting it.
-- [ ] Generate answer citations from retrieved chunks and render links to the relevant source document, page, section, or paragraph.
-- [ ] Add an LLM provider interface and ship one cloud provider plus Ollama as the first local-provider implementation without coupling provider details to chat services.
-- [ ] Provide Docker Compose for the frontend, API, PostgreSQL/pgvector, and persistent volumes; verify `docker compose up -d` yields a working local instance.
+- [x] Add an asynchronous ingestion workflow that tracks each document through upload, parsing, chunking, embedding, indexing, completion, and failure.
+- [x] Implement embeddings through an initial provider adapter and store chunk vectors in pgvector.
+- [x] Implement workspace-constrained vector retrieval with relevance thresholds and source-location metadata.
+- [x] Implement a grounded chat pipeline: retrieve context, construct a constrained prompt, call the model, and decline or qualify answers unsupported by the retrieved sources.
+- [x] Stream chat responses from the API to the UI, including cancel/retry behavior and recoverable provider errors.
+- [x] Persist conversations and messages per workspace; support starting a chat, reopening a chat, renaming it, and deleting it.
+- [x] Generate answer citations from retrieved chunks and render links to the relevant source document, page, section, or paragraph.
+- [x] Add an LLM provider interface and ship one cloud provider plus Ollama as the first local-provider implementation without coupling provider details to chat services.
+- [x] Provide Docker Compose for the frontend, API, PostgreSQL/pgvector, and persistent volumes; verify `docker compose up -d` yields a working local instance.
 - [x] Add structured logs, request/correlation IDs, health/readiness endpoints, and safe user-facing error responses.
 - [x] Write setup, configuration, architecture, and basic troubleshooting documentation.
-- [ ] Add automated tests for workspace isolation, ingestion state transitions, chunk citation mapping, retrieval constraints, and the grounded-chat service.
+- [x] Add automated tests for workspace isolation, ingestion state transitions, chunk citation mapping, retrieval constraints, and the grounded-chat service.
 
 ## P1 — Core product completion
 

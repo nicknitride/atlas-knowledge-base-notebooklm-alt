@@ -1,1 +1,5 @@
 dev/atlas/documents/DocumentExtractorTest.class
+dev/atlas/documents/IngestionWorkflowTest.class
+dev/atlas/workspaces/WorkspaceIsolationTest.class
+dev/atlas/retrieval/VectorSearchServiceTest.class
+dev/atlas/chat/GroundedChatServiceTest.class

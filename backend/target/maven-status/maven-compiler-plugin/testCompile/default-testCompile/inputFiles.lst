@@ -1,1 +1,5 @@
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/chat/GroundedChatServiceTest.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/documents/DocumentExtractorTest.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/documents/IngestionWorkflowTest.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/retrieval/VectorSearchServiceTest.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/workspaces/WorkspaceIsolationTest.java
