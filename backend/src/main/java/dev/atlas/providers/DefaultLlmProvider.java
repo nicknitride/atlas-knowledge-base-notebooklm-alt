@@ -31,6 +31,12 @@ public class DefaultLlmProvider implements LlmProvider {
   @Value("${atlas.provider.openai.model:gpt-4o-mini}")
   private String openAiModel;
 
+  @Value("${atlas.provider.gemini.api-key:}")
+  private String geminiApiKey;
+
+  @Value("${atlas.provider.gemini.model:gemini-2.0-flash}")
+  private String geminiModel;
+
   @Override
   public String providerName() {
     return providerType;
@@ -49,7 +55,9 @@ public class DefaultLlmProvider implements LlmProvider {
         return generateOpenAi(messages);
       } catch (Exception e) {
         log.warn("OpenAI LLM call failed, using fallback synthesis: {}", e.getMessage());
-      }
+      } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
+          try { return generateGemini(messages); }
+          catch (Exception e) { log.warn("Gemini call failed: {}", e.getMessage()); }
     }
     return generateFallback(messages);
   }

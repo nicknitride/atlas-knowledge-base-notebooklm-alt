@@ -186,7 +186,7 @@ Add to your .env file (copy from .env.example):
   # LLM provider — set to "gemini" to use Google Gemini
   ATLAS_PROVIDER_TYPE=gemini
   ATLAS_GEMINI_API_KEY=AIzaSy...your-key-here...
-  ATLAS_GEMINI_MODEL=gemini-2.0-flash
+  ATLAS_GEMINI_MODEL=gemini-3.5-flash
 
 Add to the api service in docker-compose.yml under environment:
 
