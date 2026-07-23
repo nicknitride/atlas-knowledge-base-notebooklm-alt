@@ -1,4 +1,4 @@
-# Atlas Implementation Plan
+-# Atlas Implementation Plan
 
 Atlas is a self-hosted AI knowledge workspace. It lets users organize private
 source material into isolated workspaces, ask grounded questions, and receive

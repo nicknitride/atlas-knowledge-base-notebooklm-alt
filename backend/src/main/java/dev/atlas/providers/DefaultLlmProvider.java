@@ -34,7 +34,7 @@ public class DefaultLlmProvider implements LlmProvider {
   @Value("${atlas.provider.gemini.api-key:}")
   private String geminiApiKey;
 
-  @Value("${atlas.provider.gemini.model:gemini-2.0-flash}")
+  @Value("${atlas.provider.gemini.model:gemini-3.5-flash}")
   private String geminiModel;
 
   @Override
@@ -50,14 +50,20 @@ public class DefaultLlmProvider implements LlmProvider {
       } catch (Exception e) {
         log.warn("Ollama LLM call failed, using fallback synthesis: {}", e.getMessage());
       }
-    } else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
+    } 
+    else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
       try {
         return generateOpenAi(messages);
       } catch (Exception e) {
         log.warn("OpenAI LLM call failed, using fallback synthesis: {}", e.getMessage());
-      } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
-          try { return generateGemini(messages); }
-          catch (Exception e) { log.warn("Gemini call failed: {}", e.getMessage()); }
+      }
+    } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
+          try { 
+            return generateGemini(messages); 
+          }
+          catch (Exception e) { 
+            log.warn("Gemini call failed: {}", e.getMessage()); 
+          }
     }
     return generateFallback(messages);
   }
@@ -192,6 +198,16 @@ public class DefaultLlmProvider implements LlmProvider {
     return response;
   }
 
+
+  /**
+   * Calls the Gemini Developer API (generateContent endpoint).
+   *
+   * Endpoint:
+   *   POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}
+   *
+   * Gemini role values: "user" and "model" (not "assistant").
+   * System messages are passed via the systemInstruction field (v1beta).
+   */
   private String generateGemini(List<ChatMessage> messages) throws Exception{
     URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"
               + geminiModel + ":generateContent?key=" + geminiApiKey);
@@ -200,9 +216,61 @@ public class DefaultLlmProvider implements LlmProvider {
     conn.setDoOutput(true);
     conn.setRequestProperty("Content-Type", "application/json");
 
-    
+      // Separate system message from conversation turns
+      String systemText = null;
+      for (ChatMessage m : messages) {
+          if ("system".equalsIgnoreCase(m.role())) systemText = m.content();
+      }
 
-    return "";
+      StringBuilder body = new StringBuilder("{");
+      body.append("\"contents\":[");
+      boolean first = true;
+      for (ChatMessage m : messages) {
+          if ("system".equalsIgnoreCase(m.role())) continue;
+          String geminiRole = "assistant".equalsIgnoreCase(m.role()) ? "model" : "user";
+          if (!first) body.append(",");
+          body.append("{\"role\":\"")
+              .append(geminiRole).append("\",")
+              .append("\"parts\":[{\"text\":").
+              append(escapeJson(m.content())).append("}]}");
+          first = false;
+      }
+
+      try (OutputStream os = conn.getOutputStream()) {
+          os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+      }
+      int status = conn.getResponseCode();
+      if (status != 200) {
+          try (InputStream err = conn.getErrorStream()) {
+              String errBody = err != null
+                  ? new String(err.readAllBytes(), StandardCharsets.UTF_8) : "";
+              throw new RuntimeException("Gemini HTTP " + status + ": " + errBody);
+          }
+      }
+
+      String response;
+      try (InputStream is = conn.getInputStream()) {
+          response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+      }
+            // Parse: candidates[0].content.parts[0].text
+      int textIdx = response.indexOf("\"text\":");
+      if (textIdx != -1) {
+          int start = response.indexOf("\"", textIdx + 7) + 1;
+          int end   = response.indexOf("\"", start);
+          while (end > 0 && response.charAt(end - 1) == '\\') {
+              end = response.indexOf("\"", end + 1);
+          }
+          return response.substring(start, end)
+                         .replace("\\n", "\n")
+                         .replace("\\\"", "\"")
+                         .replace("\\\\", "\\");
+      }
+      log.info("Request Content: "+ messages);
+      log.info("Request Proper: "+body);
+      log.info("Response: "+ response);
+
+      return response;
+
   }
 
   private String escapeJson(String text) {
