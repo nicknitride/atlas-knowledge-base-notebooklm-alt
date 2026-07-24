@@ -1,5 +1,9 @@
 package dev.atlas.providers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.atlas.providers.dto.GeminiDtos.GeminiEmbeddingResponse;
+import dev.atlas.providers.dto.OllamaDtos.OllamaEmbeddingResponse;
+import dev.atlas.providers.dto.OpenAiDtos.OpenAiEmbeddingResponse;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -18,6 +22,8 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
   private static final Logger log = LoggerFactory.getLogger(DefaultEmbeddingProvider.class);
   private static final int DIMENSION = 1536;
 
+  private final ObjectMapper objectMapper;
+
   @Value("${atlas.provider.type:local}")
   private String providerType;
 
@@ -30,8 +36,12 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
   @Value("${atlas.provider.gemini.api-key:}")
   private String geminiApiKey;
 
-  @Value("${atlas.provider.gemini.embedding-model-gemini}")
+  @Value("${atlas.provider.gemini.embedding-model-gemini:text-embedding-004}")
   private String geminiEmbeddingProvider;
+
+  public DefaultEmbeddingProvider(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
   @Override
   public float[] embed(String text) {
@@ -93,7 +103,12 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     conn.setRequestMethod("POST");
     conn.setDoOutput(true);
     conn.setRequestProperty("Content-Type", "application/json");
-    String payload = String.format("{\"model\":\"nomic-embed-text\",\"prompt\":%s}", escapeJson(text));
+
+    String payload = objectMapper.writeValueAsString(java.util.Map.of(
+        "model", "nomic-embed-text",
+        "prompt", text
+    ));
+
     try (OutputStream os = conn.getOutputStream()) {
       os.write(payload.getBytes(StandardCharsets.UTF_8));
     }
@@ -104,7 +119,11 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     try (InputStream is = conn.getInputStream()) {
       response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
-    return parseEmbeddingFromJson(response);
+    OllamaEmbeddingResponse dto = objectMapper.readValue(response, OllamaEmbeddingResponse.class);
+    if (dto != null && dto.embedding() != null && !dto.embedding().isEmpty()) {
+      return toFloatArray(dto.embedding());
+    }
+    return embedDeterministic(text);
   }
 
   private float[] embedOpenAi(String text) throws Exception {
@@ -114,7 +133,12 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     conn.setDoOutput(true);
     conn.setRequestProperty("Content-Type", "application/json");
     conn.setRequestProperty("Authorization", "Bearer " + openAiApiKey);
-    String payload = String.format("{\"model\":\"text-embedding-3-small\",\"input\":%s}", escapeJson(text));
+
+    String payload = objectMapper.writeValueAsString(java.util.Map.of(
+        "model", "text-embedding-3-small",
+        "input", text
+    ));
+
     try (OutputStream os = conn.getOutputStream()) {
       os.write(payload.getBytes(StandardCharsets.UTF_8));
     }
@@ -125,62 +149,25 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     try (InputStream is = conn.getInputStream()) {
       response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
-    return parseEmbeddingFromJson(response);
-  }
-
-  private float[] parseEmbeddingFromJson(String json) {
-    int idx = json.indexOf("\"embedding\":[");
-    if (idx == -1) return embedDeterministic(json);
-    int start = idx + "\"embedding\":[".length();
-    int end = json.indexOf("]", start);
-    String arrStr = json.substring(start, end);
-    String[] parts = arrStr.split(",");
-    float[] vector = new float[Math.min(parts.length, DIMENSION)];
-    for (int i = 0; i < vector.length; i++) {
-      vector[i] = Float.parseFloat(parts[i].trim());
+    OpenAiEmbeddingResponse dto = objectMapper.readValue(response, OpenAiEmbeddingResponse.class);
+    if (dto != null && dto.data() != null && !dto.data().isEmpty() && dto.data().get(0).embedding() != null) {
+      return toFloatArray(dto.data().get(0).embedding());
     }
-    return vector;
+    return embedDeterministic(text);
   }
 
-  /**
-   * Parses a Gemini embedContent response.
-   * Gemini wraps values as: { "embedding": { "values": [...] } }
-   */
-  private float[] parseGeminiEmbeddingFromJson(String json) {
-    int idx = json.indexOf("\"values\":[");
-    if (idx == -1) return embedDeterministic(json);
-    int start = idx + "\"values\":[".length();
-    int end = json.indexOf("]", start);
-    String arrStr = json.substring(start, end);
-    String[] parts = arrStr.split(",");
-    float[] vector = new float[Math.min(parts.length, DIMENSION)];
-    for (int i = 0; i < vector.length; i++) {
-      vector[i] = Float.parseFloat(parts[i].trim());
-    }
-    return vector;
-  }
-
-  /**
-   * Calls the Gemini embedContent API.
-   *
-   * Endpoint:
-   *   POST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={apiKey}
-   *
-   * outputDimensionality is set to 1536 to match the pgvector column dimension used
-   * by the OpenAI and deterministic fallback embeddings.
-   */
   private float[] embedGemini(String text) throws Exception {
-    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"+geminiEmbeddingProvider+":embedContent?key=" + geminiApiKey);
+    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + geminiEmbeddingProvider + ":embedContent?key=" + geminiApiKey);
     HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
     conn.setRequestMethod("POST");
     conn.setDoOutput(true);
     conn.setRequestProperty("Content-Type", "application/json");
 
-    String payload = "{" +
-        "\"model\":\""+geminiEmbeddingProvider+"\"," +
-        "\"content\":{\"parts\":[{\"text\":" + escapeJson(text) + "}]}," +
-        "\"outputDimensionality\":" + DIMENSION +
-        "}";
+    String payload = objectMapper.writeValueAsString(java.util.Map.of(
+        "model", geminiEmbeddingProvider,
+        "content", java.util.Map.of("parts", List.of(java.util.Map.of("text", text))),
+        "outputDimensionality", DIMENSION
+    ));
 
     try (OutputStream os = conn.getOutputStream()) {
       os.write(payload.getBytes(StandardCharsets.UTF_8));
@@ -198,10 +185,19 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     try (InputStream is = conn.getInputStream()) {
       response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
-    return parseGeminiEmbeddingFromJson(response);
+
+    GeminiEmbeddingResponse dto = objectMapper.readValue(response, GeminiEmbeddingResponse.class);
+    if (dto != null && dto.embedding() != null && dto.embedding().values() != null) {
+      return toFloatArray(dto.embedding().values());
+    }
+    return embedDeterministic(text);
   }
 
-  private String escapeJson(String text) {
-    return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"";
+  private float[] toFloatArray(List<Float> list) {
+    float[] vector = new float[Math.min(list.size(), DIMENSION)];
+    for (int i = 0; i < vector.length; i++) {
+      vector[i] = list.get(i);
+    }
+    return vector;
   }
 }

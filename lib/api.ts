@@ -153,33 +153,63 @@ export function streamChatMessage(
   onComplete: () => void,
   onError: (err: Error) => void
 ): () => void {
-  const url = `${API_BASE}/api/workspaces/${workspaceId}/conversations/${conversationId}/messages/stream?query=${encodeURIComponent(query)}`
-  const eventSource = new EventSource(url)
+  const url = `${API_BASE}/api/workspaces/${workspaceId}/conversations/${conversationId}/messages/stream`
+  const controller = new AbortController()
 
-  eventSource.addEventListener('chunk', (e: MessageEvent) => {
-    onChunk(e.data)
-  })
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream'
+    },
+    body: JSON.stringify({ query }),
+    signal: controller.signal
+  }).then(async (response) => {
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to initiate stream (${response.status})`)
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
-  eventSource.addEventListener('citations', (e: MessageEvent) => {
-    try {
-      const data = JSON.parse(e.data)
-      onCitations(data)
-    } catch (err) {
-      console.error('Failed to parse citations', err)
+    let currentEvent = 'message'
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('event:')) {
+          currentEvent = trimmed.substring(6).trim()
+        } else if (trimmed.startsWith('data:')) {
+          const data = trimmed.substring(5).trim()
+          if (currentEvent === 'chunk') {
+            onChunk(data)
+          } else if (currentEvent === 'citations') {
+            try {
+              onCitations(JSON.parse(data))
+            } catch (err) {
+              console.error('Failed to parse citations', err)
+            }
+          } else if (currentEvent === 'done') {
+            onComplete()
+            return
+          }
+        }
+      }
+    }
+    onComplete()
+  }).catch((err) => {
+    if (err.name !== 'AbortError') {
+      onError(err)
     }
   })
 
-  eventSource.addEventListener('done', () => {
-    eventSource.close()
-    onComplete()
-  })
-
-  eventSource.onerror = (e) => {
-    eventSource.close()
-    onError(new Error('EventSource streaming error occurred'))
-  }
-
   return () => {
-    eventSource.close()
+    controller.abort()
   }
 }

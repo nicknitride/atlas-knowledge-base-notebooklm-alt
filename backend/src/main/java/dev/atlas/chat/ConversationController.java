@@ -111,18 +111,18 @@ public class ConversationController {
     );
   }
 
-  @GetMapping(value = "/{id}/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  @PostMapping(value = "/{id}/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter streamMessage(
       @PathVariable UUID workspaceId,
       @PathVariable UUID id,
-      @RequestParam("query") String query) {
+      @Valid @RequestBody StreamMessageRequest request) {
     workspaces.requireExists(workspaceId);
     SseEmitter emitter = new SseEmitter(60000L);
 
     chatService.streamChat(
         workspaceId,
         id,
-        query,
+        request.query(),
         chunk -> {
           try {
             emitter.send(SseEmitter.event().name("chunk").data(chunk));
@@ -184,6 +184,7 @@ public class ConversationController {
   public record CreateConversationRequest(String title) {}
   public record RenameConversationRequest(@NotBlank String title) {}
   public record SendMessageRequest(@NotBlank String content) {}
+  public record StreamMessageRequest(@NotBlank String query) {}
 
   public record ConversationResponse(UUID id, UUID workspaceId, String title, Instant createdAt, Instant updatedAt) {
     static ConversationResponse from(Conversation c) {

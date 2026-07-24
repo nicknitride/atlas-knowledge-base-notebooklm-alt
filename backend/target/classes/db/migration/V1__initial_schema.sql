@@ -49,7 +49,7 @@ CREATE TABLE messages (
 
 CREATE TABLE message_citations (
   message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-  chunk_id UUID NOT NULL REFERENCES document_chunks(id) ON DELETE RESTRICT,
+  chunk_id UUID NOT NULL REFERENCES document_chunks(id) ON DELETE CASCADE,
   ordinal INTEGER NOT NULL,
   PRIMARY KEY (message_id, ordinal)
 );

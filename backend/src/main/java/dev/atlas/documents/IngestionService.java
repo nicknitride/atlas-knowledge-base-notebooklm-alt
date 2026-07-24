@@ -2,11 +2,12 @@ package dev.atlas.documents;
 
 import dev.atlas.providers.EmbeddingProvider;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -17,25 +18,73 @@ public class IngestionService {
   private static final Logger log = LoggerFactory.getLogger(IngestionService.class);
 
   private final KnowledgeDocumentRepository documents;
+  private final IngestionJobRepository jobRepository;
   private final FileStorage storage;
   private final DocumentExtractor extractor;
   private final EmbeddingProvider embeddingProvider;
   private final JdbcTemplate jdbc;
 
-  public IngestionService(KnowledgeDocumentRepository documents, FileStorage storage, DocumentExtractor extractor, EmbeddingProvider embeddingProvider, JdbcTemplate jdbc) {
+  public IngestionService(
+      KnowledgeDocumentRepository documents,
+      IngestionJobRepository jobRepository,
+      FileStorage storage,
+      DocumentExtractor extractor,
+      EmbeddingProvider embeddingProvider,
+      JdbcTemplate jdbc) {
     this.documents = documents;
+    this.jobRepository = jobRepository;
     this.storage = storage;
     this.extractor = extractor;
     this.embeddingProvider = embeddingProvider;
     this.jdbc = jdbc;
   }
 
-  @Async
-  @Transactional
   public void ingest(UUID documentId) {
-    KnowledgeDocument document = documents.findById(documentId).orElse(null);
-    if (document == null) return;
+    IngestionJob job = jobRepository.save(new IngestionJob(documentId));
+    processJobAsync(job.id());
+  }
+
+  @Async
+  public void processJobAsync(UUID jobId) {
+    executeJob(jobId);
+  }
+
+  @EventListener(ApplicationReadyEvent.class)
+  public void recoverOrphanedJobs() {
+    List<IngestionJob> orphanedJobs = jobRepository.findByStatus("PROCESSING");
+    if (!orphanedJobs.isEmpty()) {
+      log.info("Found {} orphaned processing ingestion jobs on startup. Recovering...", orphanedJobs.size());
+      for (IngestionJob job : orphanedJobs) {
+        job.markPending();
+        jobRepository.save(job);
+      }
+    }
+
+    List<IngestionJob> pendingJobs = jobRepository.findByStatus("PENDING");
+    if (!pendingJobs.isEmpty()) {
+      log.info("Enqueuing {} pending ingestion jobs for execution...", pendingJobs.size());
+      for (IngestionJob job : pendingJobs) {
+        processJobAsync(job.id());
+      }
+    }
+  }
+
+  @Transactional
+  public void executeJob(UUID jobId) {
+    IngestionJob job = jobRepository.findById(jobId).orElse(null);
+    if (job == null) return;
+
+    KnowledgeDocument document = documents.findById(job.documentId()).orElse(null);
+    if (document == null) {
+      job.markFailed("Associated document no longer exists");
+      jobRepository.save(job);
+      return;
+    }
+
     try {
+      job.markProcessing();
+      jobRepository.saveAndFlush(job);
+
       document.markProcessing();
       documents.saveAndFlush(document);
 
@@ -67,11 +116,19 @@ public class IngestionService {
 
       document.markComplete();
       documents.saveAndFlush(document);
-      log.info("Document {} ingested successfully with {} chunks", documentId, ordinal);
+
+      job.markCompleted();
+      jobRepository.saveAndFlush(job);
+
+      log.info("Document {} ingested successfully with {} chunks (Job {})", document.id(), ordinal, job.id());
     } catch (Exception exception) {
-      log.error("Failed to ingest document {}", documentId, exception);
-      document.markFailed("The document could not be processed: " + exception.getMessage());
+      log.error("Failed to ingest document {} (Job {})", document.id(), job.id(), exception);
+      String failMsg = "The document could not be processed: " + exception.getMessage();
+      document.markFailed(failMsg);
       documents.saveAndFlush(document);
+
+      job.markFailed(failMsg);
+      jobRepository.saveAndFlush(job);
     }
   }
 

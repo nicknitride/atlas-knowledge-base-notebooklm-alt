@@ -1,20 +1,29 @@
 package dev.atlas.providers;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.atlas.providers.dto.GeminiDtos;
+import dev.atlas.providers.dto.OllamaDtos;
+import dev.atlas.providers.dto.OpenAiDtos;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 @Service
 public class DefaultLlmProvider implements LlmProvider {
   private static final Logger log = LoggerFactory.getLogger(DefaultLlmProvider.class);
+
+  private final ObjectMapper objectMapper;
+  private final WebClient webClient;
 
   @Value("${atlas.provider.type:local}")
   private String providerType;
@@ -34,8 +43,13 @@ public class DefaultLlmProvider implements LlmProvider {
   @Value("${atlas.provider.gemini.api-key:}")
   private String geminiApiKey;
 
-  @Value("${atlas.provider.gemini.model:gemini-3.5-flash}")
+  @Value("${atlas.provider.gemini.model:gemini-1.5-flash}")
   private String geminiModel;
+
+  public DefaultLlmProvider(ObjectMapper objectMapper, WebClient.Builder webClientBuilder) {
+    this.objectMapper = objectMapper;
+    this.webClient = webClientBuilder.build();
+  }
 
   @Override
   public String providerName() {
@@ -50,43 +64,248 @@ public class DefaultLlmProvider implements LlmProvider {
       } catch (Exception e) {
         log.warn("Ollama LLM call failed, using fallback synthesis: {}", e.getMessage());
       }
-    } 
-    else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
+    } else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
       try {
         return generateOpenAi(messages);
       } catch (Exception e) {
         log.warn("OpenAI LLM call failed, using fallback synthesis: {}", e.getMessage());
       }
     } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
-          try { 
-            return generateGemini(messages); 
-          }
-          catch (Exception e) { 
-            log.warn("Gemini call failed: {}", e.getMessage()); 
-          }
+      try {
+        return generateGemini(messages);
+      } catch (Exception e) {
+        log.warn("Gemini call failed: {}", e.getMessage());
+      }
     }
     return generateFallback(messages);
   }
 
   @Override
   public void stream(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+    if ("ollama".equalsIgnoreCase(providerType)) {
+      streamOllama(messages, chunkConsumer, onComplete, onError);
+    } else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
+      streamOpenAi(messages, chunkConsumer, onComplete, onError);
+    } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
+      streamGemini(messages, chunkConsumer, onComplete, onError);
+    } else {
+      streamFallback(messages, chunkConsumer, onComplete, onError);
+    }
+  }
+
+  private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+    Map<String, Object> body = Map.of(
+        "model", ollamaModel,
+        "stream", true,
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+    );
+
+    webClient.post()
+        .uri(ollamaUrl + "/api/chat")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToFlux(String.class)
+        .subscribe(
+            line -> {
+              try {
+                OllamaDtos.OllamaChatResponse chunk = objectMapper.readValue(line, OllamaDtos.OllamaChatResponse.class);
+                if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
+                  chunkConsumer.accept(chunk.message().content());
+                }
+              } catch (Exception e) {
+                log.trace("Error parsing Ollama stream chunk line: {}", line, e);
+              }
+            },
+            error -> {
+              log.warn("Ollama streaming error, falling back: {}", error.getMessage());
+              streamFallback(messages, chunkConsumer, onComplete, onError);
+            },
+            onComplete::run
+        );
+  }
+
+  private void streamOpenAi(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+    Map<String, Object> body = Map.of(
+        "model", openAiModel,
+        "stream", true,
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+    );
+
+    webClient.post()
+        .uri("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", "Bearer " + openAiApiKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToFlux(String.class)
+        .subscribe(
+            line -> {
+              String trimmed = line.trim();
+              if (trimmed.startsWith("data: ")) {
+                String json = trimmed.substring(6).trim();
+                if ("[DONE]".equalsIgnoreCase(json)) return;
+                try {
+                  OpenAiDtos.OpenAiChatResponse chunk = objectMapper.readValue(json, OpenAiDtos.OpenAiChatResponse.class);
+                  if (chunk != null && chunk.choices() != null && !chunk.choices().isEmpty()) {
+                    OpenAiDtos.OpenAiDelta delta = chunk.choices().get(0).delta();
+                    if (delta != null && delta.content() != null) {
+                      chunkConsumer.accept(delta.content());
+                    }
+                  }
+                } catch (Exception e) {
+                  log.trace("Error parsing OpenAI stream chunk", e);
+                }
+              }
+            },
+            error -> {
+              log.warn("OpenAI streaming error, falling back: {}", error.getMessage());
+              streamFallback(messages, chunkConsumer, onComplete, onError);
+            },
+            onComplete::run
+        );
+  }
+
+  private void streamGemini(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+    Map<String, Object> body = buildGeminiRequestBody(messages);
+
+    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":streamGenerateContent?key=" + geminiApiKey + "&alt=sse";
+
+    webClient.post()
+        .uri(url)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToFlux(String.class)
+        .subscribe(
+            line -> {
+              String trimmed = line.trim();
+              if (trimmed.startsWith("data: ")) {
+                String json = trimmed.substring(6).trim();
+                try {
+                  GeminiDtos.GeminiChatResponse response = objectMapper.readValue(json, GeminiDtos.GeminiChatResponse.class);
+                  if (response != null && response.candidates() != null && !response.candidates().isEmpty()) {
+                    GeminiDtos.Candidate candidate = response.candidates().get(0);
+                    if (candidate.content() != null && candidate.content().parts() != null) {
+                      for (GeminiDtos.Part p : candidate.content().parts()) {
+                        if (p.text() != null) {
+                          chunkConsumer.accept(p.text());
+                        }
+                      }
+                    }
+                  }
+                } catch (Exception e) {
+                  log.trace("Error parsing Gemini SSE chunk: {}", line, e);
+                }
+              }
+            },
+            error -> {
+              log.warn("Gemini streaming error, falling back: {}", error.getMessage());
+              streamFallback(messages, chunkConsumer, onComplete, onError);
+            },
+            onComplete::run
+        );
+  }
+
+  private void streamFallback(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
     try {
-      String fullResponse = generate(messages);
-      // Split on word boundaries so each chunk is a word followed by its trailing
-      // whitespace. This ensures spaces are never emitted as standalone SSE data
-      // lines (which the SSE spec would strip), while still preserving spacing
-      // between words when the frontend concatenates chunks.
-      String[] words = fullResponse.split("(?<=\\s)(?=\\S)");
-      for (String word : words) {
-        if (!word.isEmpty()) {
-          chunkConsumer.accept(word);
-          Thread.sleep(15);
-        }
-      }
+      String fullResponse = generateFallback(messages);
+      chunkConsumer.accept(fullResponse);
       onComplete.run();
     } catch (Exception e) {
       onError.accept(e);
     }
+  }
+
+  private String generateOllama(List<ChatMessage> messages) throws Exception {
+    Map<String, Object> body = Map.of(
+        "model", ollamaModel,
+        "stream", false,
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+    );
+
+    String jsonResponse = webClient.post()
+        .uri(ollamaUrl + "/api/chat")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(60));
+
+    OllamaDtos.OllamaChatResponse res = objectMapper.readValue(jsonResponse, OllamaDtos.OllamaChatResponse.class);
+    if (res != null && res.message() != null && res.message().content() != null) {
+      return res.message().content();
+    }
+    return jsonResponse;
+  }
+
+  private String generateOpenAi(List<ChatMessage> messages) throws Exception {
+    Map<String, Object> body = Map.of(
+        "model", openAiModel,
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+    );
+
+    String jsonResponse = webClient.post()
+        .uri("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", "Bearer " + openAiApiKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(60));
+
+    OpenAiDtos.OpenAiChatResponse res = objectMapper.readValue(jsonResponse, OpenAiDtos.OpenAiChatResponse.class);
+    if (res != null && res.choices() != null && !res.choices().isEmpty() && res.choices().get(0).message() != null) {
+      return res.choices().get(0).message().content();
+    }
+    return jsonResponse;
+  }
+
+  private String generateGemini(List<ChatMessage> messages) throws Exception {
+    Map<String, Object> body = buildGeminiRequestBody(messages);
+
+    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":generateContent?key=" + geminiApiKey;
+    String jsonResponse = webClient.post()
+        .uri(url)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(60));
+
+    GeminiDtos.GeminiChatResponse res = objectMapper.readValue(jsonResponse, GeminiDtos.GeminiChatResponse.class);
+    if (res != null && res.candidates() != null && !res.candidates().isEmpty()) {
+      GeminiDtos.Candidate c = res.candidates().get(0);
+      if (c.content() != null && c.content().parts() != null && !c.content().parts().isEmpty()) {
+        return c.content().parts().get(0).text();
+      }
+    }
+    return jsonResponse;
+  }
+
+  private Map<String, Object> buildGeminiRequestBody(List<ChatMessage> messages) {
+    String systemText = null;
+    List<Map<String, Object>> contents = new ArrayList<>();
+
+    for (ChatMessage m : messages) {
+      if ("system".equalsIgnoreCase(m.role())) {
+        systemText = m.content();
+      } else {
+        String role = "assistant".equalsIgnoreCase(m.role()) ? "model" : "user";
+        contents.add(Map.of(
+            "role", role,
+            "parts", List.of(Map.of("text", m.content()))
+        ));
+      }
+    }
+
+    if (systemText != null && !systemText.isBlank()) {
+      return Map.of(
+          "systemInstruction", Map.of("parts", List.of(Map.of("text", systemText))),
+          "contents", contents
+      );
+    }
+    return Map.of("contents", contents);
   }
 
   private String generateFallback(List<ChatMessage> messages) {
@@ -104,10 +323,9 @@ public class DefaultLlmProvider implements LlmProvider {
       return "I do not have sufficient information in the uploaded workspace documents to answer this question. Please upload relevant source material or refine your query.";
     }
 
-    // Extract excerpt from system context if available
     StringBuilder answer = new StringBuilder();
     answer.append("Based on the workspace document sources provided:\n\n");
-    
+
     int contextStart = context.indexOf("=== RETRIEVED SOURCES ===");
     if (contextStart != -1) {
       String sourcesSection = context.substring(contextStart);
@@ -131,168 +349,5 @@ public class DefaultLlmProvider implements LlmProvider {
       answer.append("Synthesized response grounded in the provided document context.");
     }
     return answer.toString();
-  }
-
-  private String generateOllama(List<ChatMessage> messages) throws Exception {
-    URI uri = URI.create(ollamaUrl + "/api/chat");
-    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
-    conn.setRequestMethod("POST");
-    conn.setDoOutput(true);
-    conn.setRequestProperty("Content-Type", "application/json");
-
-    StringBuilder body = new StringBuilder();
-    body.append("{\"model\":\"").append(ollamaModel).append("\",\"stream\":false,\"messages\":[");
-    for (int i = 0; i < messages.size(); i++) {
-      ChatMessage m = messages.get(i);
-      body.append(String.format("{\"role\":\"%s\",\"content\":%s}", m.role(), escapeJson(m.content())));
-      if (i < messages.size() - 1) body.append(",");
-    }
-    body.append("]}");
-
-    try (OutputStream os = conn.getOutputStream()) {
-      os.write(body.toString().getBytes(StandardCharsets.UTF_8));
-    }
-    if (conn.getResponseCode() != 200) {
-      throw new RuntimeException("Ollama status " + conn.getResponseCode());
-    }
-    String response;
-    try (InputStream is = conn.getInputStream()) {
-      response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-    }
-    int contentIdx = response.indexOf("\"content\":\"");
-    if (contentIdx != -1) {
-      int start = contentIdx + "\"content\":\"".length();
-      int end = response.indexOf("\"", start);
-      return response.substring(start, end).replace("\\n", "\n").replace("\\\"", "\"");
-    }
-    return response;
-  }
-
-  private String generateOpenAi(List<ChatMessage> messages) throws Exception {
-    URI uri = URI.create("https://api.openai.com/v1/chat/completions");
-    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
-    conn.setRequestMethod("POST");
-    conn.setDoOutput(true);
-    conn.setRequestProperty("Content-Type", "application/json");
-    conn.setRequestProperty("Authorization", "Bearer " + openAiApiKey);
-
-    StringBuilder body = new StringBuilder();
-    body.append("{\"model\":\"").append(openAiModel).append("\",\"messages\":[");
-    for (int i = 0; i < messages.size(); i++) {
-      ChatMessage m = messages.get(i);
-      body.append(String.format("{\"role\":\"%s\",\"content\":%s}", m.role(), escapeJson(m.content())));
-      if (i < messages.size() - 1) body.append(",");
-    }
-    body.append("]}");
-
-    try (OutputStream os = conn.getOutputStream()) {
-      os.write(body.toString().getBytes(StandardCharsets.UTF_8));
-    }
-    if (conn.getResponseCode() != 200) {
-      throw new RuntimeException("OpenAI status " + conn.getResponseCode());
-    }
-    String response;
-    try (InputStream is = conn.getInputStream()) {
-      response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-    }
-    int contentIdx = response.indexOf("\"content\":\"");
-    if (contentIdx != -1) {
-      int start = contentIdx + "\"content\":\"".length();
-      int end = response.indexOf("\"", start);
-      return response.substring(start, end).replace("\\n", "\n").replace("\\\"", "\"");
-    }
-    return response;
-  }
-
-
-  /**
-   * Calls the Gemini Developer API (generateContent endpoint).
-   *
-   * Endpoint:
-   *   POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}
-   *
-   * Gemini role values: "user" and "model" (not "assistant").
-   * System messages are passed via the systemInstruction field (v1beta).
-   */
-  private String generateGemini(List<ChatMessage> messages) throws Exception{
-    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"
-              + geminiModel + ":generateContent?key=" + geminiApiKey);
-    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
-    conn.setRequestMethod("POST");
-    conn.setDoOutput(true);
-    conn.setRequestProperty("Content-Type", "application/json");
-
-      // Separate system message from conversation turns
-      String systemText = null;
-      for (ChatMessage m : messages) {
-          if ("system".equalsIgnoreCase(m.role())) systemText = m.content();
-      }
-
-      StringBuilder body = new StringBuilder("{");
-
-      // Attach system instruction if present
-      if (systemText != null && !systemText.isBlank()) {
-          body.append("\"systemInstruction\":{\"parts\":[{\"text\":")
-              .append(escapeJson(systemText))
-              .append("}]},");
-      }
-
-      body.append("\"contents\":[");
-      boolean first = true;
-      for (ChatMessage m : messages) {
-          if ("system".equalsIgnoreCase(m.role())) continue;
-          String geminiRole = "assistant".equalsIgnoreCase(m.role()) ? "model" : "user";
-          if (!first) body.append(",");
-          body.append("{\"role\":\"")
-              .append(geminiRole).append("\",")
-              .append("\"parts\":[{\"text\":").
-              append(escapeJson(m.content())).append("}]}");
-          first = false;
-      }
-      body.append("]}"); // close contents array and root object
-
-      try (OutputStream os = conn.getOutputStream()) {
-          os.write(body.toString().getBytes(StandardCharsets.UTF_8));
-      }
-      int status = conn.getResponseCode();
-      if (status != 200) {
-          try (InputStream err = conn.getErrorStream()) {
-              String errBody = err != null
-                  ? new String(err.readAllBytes(), StandardCharsets.UTF_8) : "";
-              throw new RuntimeException("Gemini HTTP " + status + ": " + errBody);
-          }
-      }
-
-      String response;
-      try (InputStream is = conn.getInputStream()) {
-          response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-      }
-            // Parse: candidates[0].content.parts[0].text
-      int textIdx = response.indexOf("\"text\":");
-      if (textIdx != -1) {
-          int start = response.indexOf("\"", textIdx + 7) + 1;
-          int end   = response.indexOf("\"", start);
-          while (end > 0 && response.charAt(end - 1) == '\\') {
-              end = response.indexOf("\"", end + 1);
-          }
-
-                log.info("Request Content: "+ messages);
-      log.info("Request Proper: "+body);
-      log.info("Response: "+ response);
-          return response.substring(start, end)
-                         .replace("\\n", "\n")
-                         .replace("\\\"", "\"")
-                         .replace("\\\\", "\\");
-      }
-      log.info("Request Content: "+ messages);
-      log.info("Request Proper: "+body);
-      log.info("Response: "+ response);
-
-      return response;
-
-  }
-
-  private String escapeJson(String text) {
-    return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"";
   }
 }

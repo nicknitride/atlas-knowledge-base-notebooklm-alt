@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 class IngestionWorkflowTest {
   private KnowledgeDocumentRepository documents;
+  private IngestionJobRepository jobRepository;
   private FileStorage storage;
   private DocumentExtractor extractor;
   private EmbeddingProvider embeddingProvider;
@@ -23,11 +24,19 @@ class IngestionWorkflowTest {
   @BeforeEach
   void setUp() {
     documents = mock(KnowledgeDocumentRepository.class);
+    jobRepository = mock(IngestionJobRepository.class);
     storage = mock(FileStorage.class);
     extractor = mock(DocumentExtractor.class);
     embeddingProvider = mock(EmbeddingProvider.class);
     jdbc = mock(JdbcTemplate.class);
-    ingestionService = new IngestionService(documents, storage, extractor, embeddingProvider, jdbc);
+    ingestionService = new IngestionService(documents, jobRepository, storage, extractor, embeddingProvider, jdbc);
+
+    when(jobRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(jobRepository.findById(any())).thenAnswer(invocation -> {
+      UUID jobId = invocation.getArgument(0);
+      IngestionJob job = new IngestionJob(UUID.randomUUID());
+      return Optional.of(job);
+    });
   }
 
   @Test
@@ -36,13 +45,13 @@ class IngestionWorkflowTest {
     UUID workspaceId = UUID.randomUUID();
     KnowledgeDocument doc = new KnowledgeDocument(workspaceId, "sample.md", "text/markdown", "key123");
 
-    when(documents.findById(docId)).thenReturn(Optional.of(doc));
+    when(documents.findById(any())).thenReturn(Optional.of(doc));
     when(storage.resolve("key123")).thenReturn(Path.of("dummy/path"));
     when(extractor.extract(any(), eq("text/markdown"), eq("sample.md")))
         .thenReturn(List.of(new DocumentExtractor.ExtractedSection("Header", "Sample markdown content to ingest.")));
     when(embeddingProvider.embed(anyString())).thenReturn(new float[1536]);
 
-    ingestionService.ingest(docId);
+    ingestionService.executeJob(UUID.randomUUID());
 
     assertEquals(IngestionStatus.COMPLETE, doc.ingestionStatus());
     assertNull(doc.failureReason());
@@ -55,11 +64,11 @@ class IngestionWorkflowTest {
     UUID workspaceId = UUID.randomUUID();
     KnowledgeDocument doc = new KnowledgeDocument(workspaceId, "empty.txt", "text/plain", "keyEmpty");
 
-    when(documents.findById(docId)).thenReturn(Optional.of(doc));
+    when(documents.findById(any())).thenReturn(Optional.of(doc));
     when(storage.resolve("keyEmpty")).thenReturn(Path.of("dummy/path"));
     when(extractor.extract(any(), anyString(), anyString())).thenReturn(List.of());
 
-    ingestionService.ingest(docId);
+    ingestionService.executeJob(UUID.randomUUID());
 
     assertEquals(IngestionStatus.FAILED, doc.ingestionStatus());
     assertNotNull(doc.failureReason());
