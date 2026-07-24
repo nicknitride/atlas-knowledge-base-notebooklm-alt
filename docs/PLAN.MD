@@ -1,94 +1,125 @@
--# Atlas Implementation Plan
+# Atlas Master Implementation & Architecture Plan
 
-Atlas is a self-hosted AI knowledge workspace. It lets users organize private
-source material into isolated workspaces, ask grounded questions, and receive
-streamed answers with traceable citations. This plan prioritizes a reliable,
-deployable vertical slice before broader provider, ingestion, and collaboration
-capabilities.
+Atlas is a self-hosted AI knowledge workspace. It lets users organize private source material into isolated workspaces, ask grounded questions, and receive streamed answers with traceable citations. 
 
-## Priority definitions
+This master plan combines the core product roadmap with architectural counterplan improvements, prioritizing immediate technical debt remediation, production-grade RAG pipelines, and enterprise security.
 
-- **P0 — Must ship:** Required for a secure, usable v1 release.
-- **P1 — Should ship:** High-value improvements that complete the core product.
-- **P2 — Planned:** Important expansion after the core is stable.
-- **P3 — Future:** Exploratory or longer-term product work.
+## Priority & Phase Definitions
 
-## P0 — Foundation and usable v1
+- **Phase 0 (P0 Remediation) — Must Fix Immediately:** Critical security, database, streaming, and data pipeline fixes to transform existing prototype stubs into a reliable, non-blocking vertical slice.
+- **Phase 1 (P0/P1 Infrastructure) — Production RAG & Ingestion:** Batch embedding, structure-aware chunking, hybrid retrieval (Dense + BM25 + RRF), and true async job queues.
+- **Phase 2 (P1/P2 Expansion) — Enterprise Security & Advanced Engine:** Authentication, RBAC, prompt injection boundaries, sliding-window token budgeting, and citation precision filtering.
+- **Phase 3 (P2/P3 Advanced) — Scalability & Knowledge Graph:** GraphRAG, knowledge visualization, agent workflows, plugin architecture, and horizontal scaling.
 
-- [x] Define the monorepo layout, module boundaries, and local development workflow for the TypeScript frontend and Java 21 / Spring Boot API.
-- [x] Establish configuration conventions: environment variables, typed configuration validation, secrets handling, and example `.env` files.
-- [x] Provision PostgreSQL with pgvector and create versioned database migrations for users, workspaces, documents, chunks, conversations, messages, and citations.
-- [x] Implement workspace CRUD with strict workspace scoping for documents, chunks, conversations, searches, and generated answers.
-- [x] Build the responsive workspace UI: workspace switcher, empty states, document list, chat view, source panel, loading states, and keyboard-accessible controls.
-- [x] Implement document upload with file-size/type validation and persistent object/file storage mounted through Docker volumes.
-- [x] Implement robust PDF, Markdown, and plain-text extraction; retain source names, page/section boundaries, and extraction failures for user review.
-- [x] Define a deterministic chunking strategy that preserves document location metadata needed for citations.
-- [x] Add an asynchronous ingestion workflow that tracks each document through upload, parsing, chunking, embedding, indexing, completion, and failure.
-- [x] Implement embeddings through an initial provider adapter and store chunk vectors in pgvector.
-- [x] Implement workspace-constrained vector retrieval with relevance thresholds and source-location metadata.
-- [x] Implement a grounded chat pipeline: retrieve context, construct a constrained prompt, call the model, and decline or qualify answers unsupported by the retrieved sources.
-- [x] Stream chat responses from the API to the UI, including cancel/retry behavior and recoverable provider errors.
-- [x] Persist conversations and messages per workspace; support starting a chat, reopening a chat, renaming it, and deleting it.
-- [x] Generate answer citations from retrieved chunks and render links to the relevant source document, page, section, or paragraph.
-- [x] Add an LLM provider interface and ship one cloud provider plus Ollama as the first local-provider implementation without coupling provider details to chat services.
-- [x] Provide Docker Compose for the frontend, API, PostgreSQL/pgvector, and persistent volumes; verify `docker compose up -d` yields a working local instance.
-- [x] Add structured logs, request/correlation IDs, health/readiness endpoints, and safe user-facing error responses.
-- [x] Write setup, configuration, architecture, and basic troubleshooting documentation.
-- [x] Add automated tests for workspace isolation, ingestion state transitions, chunk citation mapping, retrieval constraints, and the grounded-chat service.
+---
 
-## P1 — Core product completion
+## Target System Architecture
 
-- [ ] Add `.docx` and HTML ingestion with normalized metadata and citation anchors.
-- [ ] Add keyword indexing and BM25/full-text retrieval in PostgreSQL alongside semantic search.
-- [ ] Combine semantic, keyword, metadata, recency, and workspace signals into hybrid retrieval; make ranking weights configurable.
-- [ ] Add a reranking stage with clear fallbacks when a reranker is unavailable.
-- [ ] Add document metadata filters, source selection, date filters, and search-result previews.
-- [ ] Support OpenAI, Anthropic, Google Gemini, and OpenRouter through the provider abstraction, including model capability metadata and streaming support.
-- [ ] Support BGE, Nomic, and Ollama embedding models, with re-indexing workflows when the selected embedding model changes.
-- [ ] Add authentication, user accounts, secure session handling, and authorization checks at every API boundary.
-- [ ] Add workspace sharing with owner/editor/viewer roles and audit-friendly ownership rules.
-- [ ] Add conversation-history search and richer conversation management.
-- [ ] Add retry controls and an admin-facing view for failed ingestion jobs.
-- [ ] Add optional Redis-backed job coordination, caching, and rate limiting without making Redis mandatory for a single-node deployment.
-- [ ] Add accessibility verification, responsive-device testing, and a consistent design system for all loading, empty, and error states.
-- [ ] Add CI checks for linting, unit/integration tests, container builds, dependency/security scanning, and database migration validation.
+```mermaid
+flowchart TD
+    subgraph Frontend["Next.js Web UI"]
+        UI[Chat & Workspace Panel]
+        SSEClient[Fetch / ReadableStream SSE Client]
+    end
 
-## P2 — Ingestion, retrieval, and integration expansion
+    subgraph API_Gateway["Spring Boot REST & Streaming Gateway"]
+        Auth[Auth & Workspace Interceptor]
+        ChatCtrl[ConversationController - POST SSE]
+        DocCtrl[DocumentController]
+    end
 
-- [ ] Add OCR ingestion for scanned PDFs and image-heavy documents, with confidence reporting and a review path for failed extraction.
-- [ ] Add GitHub repository ingestion with repository selection, branch/ref tracking, incremental sync, and source links back to files and lines.
-- [ ] Add Obsidian vault import while preserving folders, links, frontmatter, and note relationships.
-- [ ] Add scheduled and incremental re-indexing for changed documents and external sources.
-- [ ] Add document hierarchy browsing, tags, custom metadata schemas, and bulk document operations.
-- [ ] Add retrieval evaluation datasets, relevance metrics, citation-accuracy checks, and regression tests for common knowledge-base queries.
-- [ ] Add observability dashboards for ingestion duration, retrieval quality signals, provider latency, token use, and error rates.
-- [ ] Add backup/restore documentation and tooling for PostgreSQL, vector data, and document volumes.
-- [ ] Publish versioned API documentation and an API for third-party integrations.
+    subgraph Pipeline["Ingestion & Task Pipeline"]
+        JobManager[Ingestion Job Coordinator]
+        DocExtractor[Structure-Aware Chunking & Extraction]
+        BatchEmbed[Batch Embedding Processor]
+    end
 
-## P3 — Advanced knowledge workflows
+    subgraph Retrieval_Engine["Multi-Stage Retrieval Engine"]
+        HybridSearch[Hybrid Retriever: Dense pgvector + Sparse BM25]
+        Reranker[Cross-Encoder Reranker Stage]
+        ContextBuilder[Prompt Sanitizer & Token Window Budgeter]
+    end
 
-- [ ] Explore GraphRAG and a knowledge-graph extraction pipeline with explicit provenance to source chunks.
-- [ ] Build an interactive knowledge-graph visualization for documents, entities, and relationships.
-- [ ] Add bounded, auditable agent workflows that operate only on workspace-authorized sources and tools.
-- [ ] Add MCP integration with explicit permission controls and workspace isolation.
-- [ ] Add audio summaries and image understanding with citations and model/provider capability checks.
-- [ ] Design and implement a plugin system with stable extension points, permission declarations, and compatibility versioning.
-- [ ] Add multi-node deployment guidance, horizontal worker scaling, and production operational runbooks.
+    subgraph Provider_Layer["Provider Abstraction Layer (Ports & Adapters)"]
+        OllamaAdapter[Ollama Reactive Adapter]
+        OpenAIAdapter[OpenAI / WebClient SSE Adapter]
+        GeminiAdapter[Gemini SSE Adapter]
+    end
 
-## Release milestones
+    subgraph Data_Layer["Storage & Vector Store"]
+        Postgres[(PostgreSQL 16 + pgvector + pg_trgm)]
+        FileStore[(Local Storage / S3 Bucket)]
+    end
 
-| Milestone | Exit criteria |
-| --- | --- |
-| **M0: Development foundation** | Local frontend/API/database environment, migrations, configuration, and health checks work reliably. |
-| **M1: Source-to-answer vertical slice** | A user can create a workspace, upload PDF/Markdown/text, wait for ingestion, ask a question, and see a streamed cited answer. |
-| **M2: Self-hosted v1** | M1 runs through Docker Compose with persistence, test coverage for critical paths, logs, documentation, and graceful errors. |
-| **M3: Collaborative, hybrid knowledge workspace** | Authentication, sharing, hybrid retrieval, additional formats/providers, and CI/CD quality gates are complete. |
+    UI --> Auth
+    SSEClient --> ChatCtrl
+    DocCtrl --> JobManager
+    JobManager --> DocExtractor --> BatchEmbed --> Postgres
+    ChatCtrl --> HybridSearch --> Reranker --> ContextBuilder
+    ContextBuilder --> Provider_Layer
+    Provider_Layer --> SSEClient
+```
 
-## Architecture guardrails
+---
 
-- Keep provider adapters, parsers, embedding models, storage, and retrieval strategies behind interfaces so they can evolve independently.
-- Treat workspace ID and authorization context as mandatory inputs to every data access and retrieval operation.
-- Store citation provenance at ingestion time; do not attempt to reconstruct source locations only after an answer is generated.
-- Keep long-running ingestion and re-indexing off synchronous request paths.
-- Prefer a single-node Docker Compose deployment as the baseline, while avoiding design choices that prevent future horizontal scaling.
-- Measure retrieval and citation quality independently from model fluency; a polished answer is not sufficient when its sources are weak.
+## Roadmap & Task Breakdown
+
+### Phase 0 — Core Foundation & Technical Debt Remediation (P0)
+
+- [x] Define monorepo layout, Spring Boot / Next.js project structure, Docker Compose setup, and local environment configs.
+- [x] Establish PostgreSQL with `pgvector` extension and initial database schema migrations ([V1__initial_schema.sql](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/resources/db/migration/V1__initial_schema.sql)).
+- [x] Build basic workspace CRUD, document upload, and UI panels (Chat, Sources, Document list).
+- [ ] **[CRITICAL FIX] Database Schema Safeguards**: Change `message_citations.chunk_id` foreign key from `ON DELETE RESTRICT` to `ON DELETE CASCADE` in [V1__initial_schema.sql](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/resources/db/migration/V1__initial_schema.sql#L52) so deleting a document is not blocked by historical conversation citations.
+- [ ] **[CRITICAL FIX] True SSE Reactive Streaming**: Remove thread-blocking `generate()` calls and simulated `Thread.sleep(15)` token splitting in [DefaultLlmProvider.java](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultLlmProvider.java#L72-L90). Implement true reactive SSE streaming using Spring `WebClient` or HTTP/2 `HttpClient`.
+- [ ] **[CRITICAL FIX] Robust Typed JSON Parsing**: Replace brittle `indexOf("\"embedding\":[")` and manual substring slicing across [DefaultEmbeddingProvider.java](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultEmbeddingProvider.java#L131-L161) and [DefaultLlmProvider.java](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultLlmProvider.java#L162-L285) with Jackson `ObjectMapper` DTOs.
+- [ ] **[CRITICAL FIX] Secure POST-based SSE Endpoint**: Move the streaming chat endpoint from `GET /messages/stream?query=...` ([ConversationController.java](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/chat/ConversationController.java#L114-L152)) to `POST /messages/stream` with JSON body payload to prevent user queries from leaking into proxy and server access logs.
+- [ ] **[CRITICAL FIX] Persistent Ingestion Task Queue**: Replace in-memory `@Async` void execution in [IngestionService.java](file:///Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/documents/IngestionService.java#L33-L76) with a persistent `ingestion_jobs` database queue and startup recovery handler to re-queue orphaned `PROCESSING` tasks after backend restarts.
+
+### Phase 1 — Ingestion Engine & Production RAG Infrastructure (P1)
+
+- [ ] **Batch Embedding Execution**: Upgrade `EmbeddingProvider` interface to support batch embeddings (`embedBatch(List<String> texts)`), replacing serial HTTP loops with single batch requests (OpenAI `input[]`, Gemini `batchEmbedContents`).
+- [ ] **Structure-Aware & Token-Aware Chunking**: Replace naive character slicing with structure-aware chunking for Markdown (heading boundaries), PDF (paragraph/page boundaries), and HTML/Docx, constrained by tokenizer token budgets (`jtoken-counting` / `cl100k_base`).
+- [ ] **HNSW Vector Indexing & Dynamic Dimensions**: Add HNSW index (`USING hnsw (embedding vector_cosine_ops)`) to `document_chunks` and add schema support for dynamic embedding dimensions (e.g., 768 for Gemini, 1024 for Ollama, 1536 for OpenAI).
+- [ ] **Sparse Keyword Indexing & Hybrid Retrieval**: Add PostgreSQL `tsvector` column and GIN full-text index to `document_chunks`. Implement Reciprocal Rank Fusion (RRF) to merge vector similarity search with BM25 sparse keyword matching.
+- [ ] **Reranking Stage**: Add cross-encoder reranking stage to re-score hybrid search candidates before prompt construction.
+- [ ] **Citation Precision Filtering**: Post-process model outputs to map saved citations in `message_citations` strictly to source markers (e.g. `[1]`, `[2]`) explicitly cited in the final generated text, filtering out unreferenced retrieved chunks.
+
+### Phase 2 — Enterprise Security, Quality & Operations (P2)
+
+- [ ] **Authentication & Authorization**: Integrate Spring Security with JWT/Session management and enforce strict workspace-level RBAC (Owner/Editor/Viewer).
+- [ ] **Prompt Injection Defense**: Wrap retrieved context chunks in explicit XML delimiters (`<context_chunk id="...">...</context_chunk>`) and sanitize prompt inputs to prevent indirect prompt injection attacks.
+- [ ] **Sliding-Window Conversation History**: Enforce a token-budget limit on conversation turns injected into prompt templates, truncating oldest turns to prevent context window overflow.
+- [ ] **Connection Pooling & Resilience**: Configure HikariCP connection pool settings (`maximum-pool-size`, `connection-timeout`, `idle-timeout`) and add Resilience4j circuit breakers/exponential backoff for cloud LLM APIs (429/5xx status codes).
+- [ ] **Retrieval Evaluation & Observability**: Set up Ragas / TruLens benchmark scripts for retrieval quality, and add Prometheus/Micrometer metrics for Time-To-First-Token (TTFT) and retrieval latency.
+
+### Phase 3 — Advanced Knowledge Engine & Integrations (P3)
+
+- [ ] **GraphRAG Pipeline**: Extract entity-relationship graphs with provenance linking to source chunks.
+- [ ] **Knowledge Graph Visualization**: Interactive graph exploration of workspace entities, documents, and concepts.
+- [ ] **External Source Connectors**: Support GitHub repository incremental sync, Obsidian vault import, and Google Drive / Notion connectors.
+- [ ] **MCP (Model Context Protocol) Integration**: Auditable tool-use and bounded agent execution within workspace isolation.
+- [ ] **Plugin System & Multi-Node Scaling**: Plugin extension points and guidance for multi-node horizontally scaled deployments.
+
+---
+
+## Release Milestones
+
+| Milestone | Target Exit Criteria |
+| :--- | :--- |
+| **M0: Foundation & Debt Remediation** | Cascade FK deletes working, true `WebClient` SSE streaming operational, Jackson DTO parsing enabled, and persistent ingestion job recovery active. |
+| **M1: High-Performance Vertical Slice** | Batch embedding active, structure-aware chunking deployed, hybrid search (Dense + BM25 + RRF) functional, and POST SSE endpoint live. |
+| **M2: Production Self-Hosted V1** | Docker Compose stack with persistent pgvector/pg_trgm storage, HNSW vector indexing, prompt injection safeguards, and citation precision filtering. |
+| **M3: Collaborative Enterprise Workspace** | Spring Security auth/RBAC active, circuit breaker resilience configured, conversation token window budgeting complete, and evaluation suites verified. |
+
+---
+
+## Architecture Guardrails & Engineering Principles
+
+1. **No Simulated Streaming**: Never use artificial delays (`Thread.sleep()`) or full synchronous string buffering to fake streaming. All streaming endpoints must pass reactive chunks directly from upstream SSE connections.
+2. **No Raw String JSON Parsing**: Always parse external API payloads using Jackson `ObjectMapper` with strongly typed Java DTOs to avoid silent data corruption.
+3. **No GET-Based SSE Prompt Endpoints**: Never pass user queries or prompts via URL query parameters in GET requests. Use `POST` body payloads to prevent logging sensitive user data in access logs.
+4. **Strict Context XML Boundaries**: Always wrap retrieved chunks in distinct XML elements (`<context_chunk id="...">`) and escape prompt inputs to prevent indirect prompt injection.
+5. **Batch Over Serial Execution**: Never issue serial HTTP calls per chunk for embedding generation. Enforce batch embedding requests (`embedBatch`) at the provider interface level.
+6. **Cascade Deletion Integrity**: Data models and database constraints must allow document and workspace deletion without throwing foreign key violations on historical citation tables.
+7. **Workspace Isolation Context**: Treat workspace ID as a mandatory parameter at every repository, retrieval, and cache level.
+8. **Decoupled Architecture**: Keep provider adapters, parsers, chunking strategies, and vector storage strictly behind interface contracts.
