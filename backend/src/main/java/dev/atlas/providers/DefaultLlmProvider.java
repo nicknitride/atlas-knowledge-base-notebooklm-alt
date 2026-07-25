@@ -283,6 +283,7 @@ public class DefaultLlmProvider implements LlmProvider {
         .block(Duration.ofSeconds(60));
 
     OllamaDtos.OllamaChatResponse res = objectMapper.readValue(jsonResponse, OllamaDtos.OllamaChatResponse.class);
+    log.info(res.toString());
     if (res != null && res.message() != null && res.message().content() != null) {
       return res.message().content();
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
+import { Streamdown } from "streamdown";
 import remarkGfm from "remark-gfm";
 import {
   Plus,
@@ -248,9 +248,12 @@ export default function ChatPanel({
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <Streamdown
+                      parseIncompleteMarkdown
+                      remarkPlugins={[remarkGfm]}
+                    >
                       {message.content}
-                    </ReactMarkdown>
+                    </Streamdown>
                   </div>
 
                   {/* Render Citation Badges for Assistant */}
