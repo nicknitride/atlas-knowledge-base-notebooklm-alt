@@ -102,14 +102,14 @@ export default function ChatPanel({
       createdAt: new Date().toISOString(),
     };
 
-    const tempAssistantMsg: Message = {
+    const tempAssistantMsg: Message = {//for future token streaming support
       id: "temp-assistant-" + Date.now(),
       role: "ASSISTANT",
       content: "",
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, tempUserMsg, tempAssistantMsg]);
+    setMessages((prev) => [...prev, tempUserMsg]);
     setIsLoading(true);
 
     let accumulatedContent = "";
@@ -118,38 +118,11 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (chunk) => {
-        // accumulatedContent += chunk;
-        // setMessages((prev) =>
-        //   prev.map((msg) =>
-        //     msg.id === tempAssistantMsg.id
-        //       ? { ...msg, content: accumulatedContent }
-        //       : msg,
-        //   ),
-        // );
+        //Useful for future token streaming support
       },
       (citations) => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempAssistantMsg.id ? { ...msg, citations } : msg,
-          ),
-        );
         onUpdateCitations(citations);
       },
-      // () => {
-      //   setIsLoading(false);
-      //   cancelStreamRef.current = null;
-      //   setMessages((prev) =>
-      //     prev.map((msg) =>
-      //       msg.id === tempAssistantMsg.id && !msg.content.trim()
-      //         ? {
-      //             ...msg,
-      //             content:
-      //               "I could not generate a response based on the workspace sources provided.",
-      //           }
-      //         : msg,
-      //     ),
-      //   );
-      // },
       async () => {
           setIsLoading(false);
           cancelStreamRef.current = null;
@@ -252,13 +225,14 @@ export default function ChatPanel({
                   <div className="font-semibold text-xs mb-1.5 opacity-80">
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
-                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
-                    {/* <Streamdown
+                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                    <Streamdown
+                    key={message.id + "-" + message.content}
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
-                    > */}
+                    >
                       {message.content}
-                    {/* </Streamdown> */}
+                    </Streamdown>
                   </div>
 
                   {/* Render Citation Badges for Assistant */}
