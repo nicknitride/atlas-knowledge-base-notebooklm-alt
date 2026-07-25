@@ -118,14 +118,14 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (chunk) => {
-        accumulatedContent += chunk;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempAssistantMsg.id
-              ? { ...msg, content: accumulatedContent }
-              : msg,
-          ),
-        );
+        // accumulatedContent += chunk;
+        // setMessages((prev) =>
+        //   prev.map((msg) =>
+        //     msg.id === tempAssistantMsg.id
+        //       ? { ...msg, content: accumulatedContent }
+        //       : msg,
+        //   ),
+        // );
       },
       (citations) => {
         setMessages((prev) =>
@@ -135,21 +135,26 @@ export default function ChatPanel({
         );
         onUpdateCitations(citations);
       },
-      () => {
-        setIsLoading(false);
-        cancelStreamRef.current = null;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempAssistantMsg.id && !msg.content.trim()
-              ? {
-                  ...msg,
-                  content:
-                    "I could not generate a response based on the workspace sources provided.",
-                }
-              : msg,
-          ),
-        );
-      },
+      // () => {
+      //   setIsLoading(false);
+      //   cancelStreamRef.current = null;
+      //   setMessages((prev) =>
+      //     prev.map((msg) =>
+      //       msg.id === tempAssistantMsg.id && !msg.content.trim()
+      //         ? {
+      //             ...msg,
+      //             content:
+      //               "I could not generate a response based on the workspace sources provided.",
+      //           }
+      //         : msg,
+      //     ),
+      //   );
+      // },
+      async () => {
+          setIsLoading(false);
+          cancelStreamRef.current = null;
+          await loadConversation(workspaceId, activeConvId);
+          },
       (err) => {
         console.error("Stream error", err);
         setError("An error occurred while streaming the answer. Please retry.");
@@ -248,12 +253,12 @@ export default function ChatPanel({
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
-                    <Streamdown
+                    {/* <Streamdown
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
-                    >
+                    > */}
                       {message.content}
-                    </Streamdown>
+                    {/* </Streamdown> */}
                   </div>
 
                   {/* Render Citation Badges for Assistant */}
