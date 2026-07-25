@@ -116,37 +116,65 @@ public class DefaultLlmProvider implements LlmProvider {
     }
   }
 
-  private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
-    Map<String, Object> body = Map.of(
-        "model", ollamaModel,
-        "stream", true,
-        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-    );
+  // private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+  //   Map<String, Object> body = Map.of(
+  //       "model", ollamaModel,
+  //       "stream", true,
+  //       "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+  //   );
 
-    webClient.post()
-        .uri(ollamaUrl + "/api/chat")
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(body)
-        .retrieve()
-        .bodyToFlux(String.class)
-        .subscribe(
-            line -> {
-              try {
-                OllamaDtos.OllamaChatResponse chunk = objectMapper.readValue(line, OllamaDtos.OllamaChatResponse.class);
-                if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
-                  chunkConsumer.accept(chunk.message().content());
-                }
-              } catch (Exception e) {
-                log.trace("Error parsing Ollama stream chunk line: {}", line, e);
-              }
-            },
-            error -> {
-              log.warn("Ollama streaming error, falling back: {}", error.getMessage());
-              streamFallback(messages, chunkConsumer, onComplete, onError);
-            },
-            onComplete::run
-        );
-  }
+  //   webClient.post()
+  //       .uri(ollamaUrl + "/api/chat")
+  //       .contentType(MediaType.APPLICATION_JSON)
+  //       .bodyValue(body)
+  //       .retrieve()
+  //       .bodyToFlux(String.class)
+  //       .subscribe(
+  //           line -> {
+  //             try {
+  //               OllamaDtos.OllamaChatResponse chunk = objectMapper.readValue(line, OllamaDtos.OllamaChatResponse.class);
+  //               if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
+  //                 chunkConsumer.accept(chunk.message().content());
+  //               }
+  //             } catch (Exception e) {
+  //               log.trace("Error parsing Ollama stream chunk line: {}", line, e);
+  //             }
+  //           },
+  //           error -> {
+  //             log.warn("Ollama streaming error, falling back: {}", error.getMessage());
+  //             streamFallback(messages, chunkConsumer, onComplete, onError);
+  //           },
+  //           onComplete::run
+  //       );
+  // }
+
+  private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+  Map<String, Object> body = Map.of(
+      "model", ollamaModel,
+      "stream", true,
+      "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
+  );
+
+  webClient.post()
+      .uri(ollamaUrl + "/api/chat")
+      .contentType(MediaType.APPLICATION_JSON)
+      .accept(MediaType.APPLICATION_NDJSON, MediaType.APPLICATION_JSON)
+      .bodyValue(body)
+      .retrieve()
+      .bodyToFlux(OllamaDtos.OllamaChatResponse.class)
+      .subscribe(
+          chunk -> {
+            if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
+              chunkConsumer.accept(chunk.message().content());
+            }
+          },
+          error -> {
+            log.warn("Ollama streaming error, falling back: {}", error.getMessage());
+            streamFallback(messages, chunkConsumer, onComplete, onError);
+          },
+          onComplete::run
+      );
+}
 
   private void streamOpenAi(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
     Map<String, Object> body = Map.of(

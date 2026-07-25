@@ -192,7 +192,7 @@ export async function deleteConversation(
   if (!res.ok) throw new Error("Failed to delete conversation");
 }
 
-export function streamChatMessage(
+export function streamChatMessageOld(
   workspaceId: string,
   conversationId: string,
   query: string,
@@ -249,6 +249,88 @@ export function streamChatMessage(
               onComplete();
               return;
             }
+          }
+        }
+      }
+      onComplete();
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        onError(err);
+      }
+    });
+
+  return () => {
+    controller.abort();
+  };
+}
+
+export function streamChatMessage(
+  workspaceId: string,
+  conversationId: string,
+  query: string,
+  onChunk: (chunk: string) => void,
+  onCitations: (citations: Citation[]) => void,
+  onComplete: () => void,
+  onError: (err: Error) => void,
+): () => void {
+  const url = `${API_BASE}/api/workspaces/${workspaceId}/conversations/${conversationId}/messages/stream`;
+  const controller = new AbortController();
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
+    body: JSON.stringify({ query }),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok || !response.body) {
+        throw new Error(`Failed to initiate stream (${response.status})`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let currentEvent = "message";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split(/\r?\n/);
+        // Retain the last incomplete line in the buffer
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            currentEvent = line.substring(6).trim();
+          } else if (line.startsWith("data:")) {
+            // Preserve leading whitespace after the 'data:' or 'data: ' prefix
+            let data = "";
+            if (line.startsWith("data: ")) {
+              data = line.substring(6);
+            } else {
+              data = line.substring(5);
+            }
+
+            if (currentEvent === "chunk") {
+              onChunk(data);
+            } else if (currentEvent === "citations") {
+              try {
+                onCitations(JSON.parse(data.trim()));
+              } catch (err) {
+                console.error("Failed to parse citations", err);
+              }
+            } else if (currentEvent === "done") {
+              onComplete();
+              return;
+            }
+          } else if (line === "" && currentEvent === "chunk") {
+            // Unescaped double newlines in SSE represent empty line events (paragraph breaks)
+            onChunk("\n");
           }
         }
       }

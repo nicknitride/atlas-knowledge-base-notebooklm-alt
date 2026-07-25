@@ -247,7 +247,7 @@ export default function ChatPanel({
                   <div className="font-semibold text-xs mb-1.5 opacity-80">
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
-                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
                     <Streamdown
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
