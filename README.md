@@ -1,4 +1,5 @@
 # Atlas
+
 ![alt text](assets/image.png)
 Atlas is a self-hosted AI knowledge workspace. This repository contains the
 Next.js interface (`/`) and Spring Boot API (`/backend`).

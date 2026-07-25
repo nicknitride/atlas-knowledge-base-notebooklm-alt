@@ -1,6 +1,6 @@
 # Atlas Master Implementation & Architecture Plan
 
-Atlas is a self-hosted AI knowledge workspace. It lets users organize private source material into isolated workspaces, ask grounded questions, and receive streamed answers with traceable citations. 
+Atlas is a self-hosted AI knowledge workspace. It lets users organize private source material into isolated workspaces, ask grounded questions, and receive streamed answers with traceable citations.
 
 This master plan combines the core product roadmap with architectural counterplan improvements, prioritizing immediate technical debt remediation, production-grade RAG pipelines, and enterprise security.
 
@@ -104,11 +104,11 @@ flowchart TD
 
 ## Release Milestones
 
-| Milestone | Target Exit Criteria |
-| :--- | :--- |
-| **M0: Foundation & Debt Remediation** | Cascade FK deletes working, true `WebClient` SSE streaming operational, Jackson DTO parsing enabled, and persistent ingestion job recovery active. |
-| **M1: High-Performance Vertical Slice** | Batch embedding active, structure-aware chunking deployed, hybrid search (Dense + BM25 + RRF) functional, and POST SSE endpoint live. |
-| **M2: Production Self-Hosted V1** | Docker Compose stack with persistent pgvector/pg_trgm storage, HNSW vector indexing, prompt injection safeguards, and citation precision filtering. |
+| Milestone                                  | Target Exit Criteria                                                                                                                                   |
+| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M0: Foundation & Debt Remediation**      | Cascade FK deletes working, true `WebClient` SSE streaming operational, Jackson DTO parsing enabled, and persistent ingestion job recovery active.     |
+| **M1: High-Performance Vertical Slice**    | Batch embedding active, structure-aware chunking deployed, hybrid search (Dense + BM25 + RRF) functional, and POST SSE endpoint live.                  |
+| **M2: Production Self-Hosted V1**          | Docker Compose stack with persistent pgvector/pg_trgm storage, HNSW vector indexing, prompt injection safeguards, and citation precision filtering.    |
 | **M3: Collaborative Enterprise Workspace** | Spring Security auth/RBAC active, circuit breaker resilience configured, conversation token window budgeting complete, and evaluation suites verified. |
 
 ---

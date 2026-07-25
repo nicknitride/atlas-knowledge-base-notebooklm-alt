@@ -96,7 +96,11 @@ public class GroundedChatService {
           },
           () -> {
             // Save assistant message
-            Message assistantMessage = messageRepository.save(new Message(conversationId, "ASSISTANT", fullAnswer.toString()));
+            String answerText = fullAnswer.toString().trim();
+            if (answerText.isEmpty()) {
+              answerText = "I could not generate a response based on the workspace sources provided.";
+            }
+            Message assistantMessage = messageRepository.save(new Message(conversationId, "ASSISTANT", answerText));
             List<CitationResponse> citations = saveCitations(assistantMessage.id(), chunks);
             citationConsumer.accept(citations);
 

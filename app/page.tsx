@@ -1,32 +1,36 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Sidebar from '@/components/sidebar'
-import ChatPanel from '@/components/chat-panel'
-import SourcesPanel from '@/components/sources-panel'
-import { Citation } from '@/lib/api'
+import { useState } from "react";
+import Sidebar from "@/components/sidebar";
+import ChatPanel from "@/components/chat-panel";
+import SourcesPanel from "@/components/sources-panel";
+import { Citation } from "@/lib/api";
 
 export default function Home() {
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null)
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'chat' | 'documents'>('chat')
-  const [citations, setCitations] = useState<Citation[]>([])
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
+    null,
+  );
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "documents">("chat");
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const handleSelectWorkspace = (id: string) => {
-    setCurrentWorkspaceId(id)
-    setCurrentConversationId(null)
-    setCitations([])
-  }
+    setCurrentWorkspaceId(id);
+    setCurrentConversationId(null);
+    setCitations([]);
+  };
 
   const handleSelectConversation = (id: string | null) => {
-    setCurrentConversationId(id)
-    setCitations([])
-  }
+    setCurrentConversationId(id);
+    setCitations([]);
+  };
 
   const handleRefresh = () => {
-    setRefreshTrigger((prev) => prev + 1)
-  }
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -48,8 +52,8 @@ export default function Home() {
           workspaceId={currentWorkspaceId}
           conversationId={currentConversationId}
           onConversationCreated={(id) => {
-            setCurrentConversationId(id)
-            handleRefresh()
+            setCurrentConversationId(id);
+            handleRefresh();
           }}
           onUpdateCitations={setCitations}
         />
@@ -58,5 +62,5 @@ export default function Home() {
       {/* Sources / Citations Panel */}
       <SourcesPanel citations={citations} />
     </div>
-  )
+  );
 }

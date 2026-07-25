@@ -22,8 +22,12 @@ services:
       ATLAS_STORAGE_DIR: /data/uploads
       ATLAS_WEB_ORIGIN: http://localhost:3000
       ATLAS_PROVIDER_TYPE: ${ATLAS_PROVIDER_TYPE:-local}
+      ATLAS_OLLAMA_URL: ${ATLAS_OLLAMA_URL:-http://host.docker.internal:11434}
+      ATLAS_OLLAMA_MODEL: ${ATLAS_OLLAMA_MODEL:-llama3}
       ATLAS_GEMINI_API_KEY: ${ATLAS_GEMINI_API_KEY:-}
       ATLAS_GEMINI_MODEL: ${ATLAS_GEMINI_MODEL:-gemini-2.0-flash}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

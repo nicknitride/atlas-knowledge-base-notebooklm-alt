@@ -1,21 +1,31 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Sparkles, ArrowUp, Square, RefreshCw, FileText, AlertCircle } from 'lucide-react'
-import { Button } from './ui/button'
+import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  Plus,
+  Sparkles,
+  ArrowUp,
+  Square,
+  RefreshCw,
+  FileText,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "./ui/button";
 import {
   Message,
   Citation,
   fetchConversationDetail,
   createConversation,
   streamChatMessage,
-} from '@/lib/api'
+} from "@/lib/api";
 
 interface ChatPanelProps {
-  workspaceId: string | null
-  conversationId: string | null
-  onConversationCreated: (id: string) => void
-  onUpdateCitations: (citations: Citation[]) => void
+  workspaceId: string | null;
+  conversationId: string | null;
+  onConversationCreated: (id: string) => void;
+  onUpdateCitations: (citations: Citation[]) => void;
 }
 
 export default function ChatPanel({
@@ -24,129 +34,147 @@ export default function ChatPanel({
   onConversationCreated,
   onUpdateCitations,
 }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const cancelStreamRef = useRef<(() => void) | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cancelStreamRef = useRef<(() => void) | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages update
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
   // Fetch Conversation detail when conversationId changes
   useEffect(() => {
     if (workspaceId && conversationId) {
-      loadConversation(workspaceId, conversationId)
+      loadConversation(workspaceId, conversationId);
     } else {
-      setMessages([])
-      onUpdateCitations([])
+      setMessages([]);
+      onUpdateCitations([]);
     }
-  }, [workspaceId, conversationId])
+  }, [workspaceId, conversationId]);
 
   const loadConversation = async (wsId: string, convId: string) => {
     try {
-      setError(null)
-      const detail = await fetchConversationDetail(wsId, convId)
-      setMessages(detail.messages)
+      setError(null);
+      const detail = await fetchConversationDetail(wsId, convId);
+      setMessages(detail.messages);
       // Extract latest assistant message citations if available
-      const lastAssistantMsg = [...detail.messages].reverse().find((m) => m.role === 'ASSISTANT')
+      const lastAssistantMsg = [...detail.messages]
+        .reverse()
+        .find((m) => m.role === "ASSISTANT");
       if (lastAssistantMsg?.citations) {
-        onUpdateCitations(lastAssistantMsg.citations)
+        onUpdateCitations(lastAssistantMsg.citations);
       }
     } catch (err) {
-      console.error('Failed to load conversation details', err)
-      setError('Could not load conversation history.')
+      console.error("Failed to load conversation details", err);
+      setError("Could not load conversation history.");
     }
-  }
+  };
 
   const handleSend = async () => {
-    if (!input.trim() || !workspaceId || isLoading) return
-    const userQuery = input.trim()
-    setInput('')
-    setError(null)
+    if (!input.trim() || !workspaceId || isLoading) return;
+    const userQuery = input.trim();
+    setInput("");
+    setError(null);
 
-    let activeConvId = conversationId
+    let activeConvId = conversationId;
     if (!activeConvId) {
       try {
-        const newConv = await createConversation(workspaceId, userQuery.substring(0, 30))
-        activeConvId = newConv.id
-        onConversationCreated(newConv.id)
+        const newConv = await createConversation(
+          workspaceId,
+          userQuery.substring(0, 30),
+        );
+        activeConvId = newConv.id;
+        onConversationCreated(newConv.id);
       } catch (err) {
-        setError('Failed to create conversation')
-        return
+        setError("Failed to create conversation");
+        return;
       }
     }
 
     const tempUserMsg: Message = {
-      id: 'temp-user-' + Date.now(),
-      role: 'USER',
+      id: "temp-user-" + Date.now(),
+      role: "USER",
       content: userQuery,
       createdAt: new Date().toISOString(),
-    }
+    };
 
     const tempAssistantMsg: Message = {
-      id: 'temp-assistant-' + Date.now(),
-      role: 'ASSISTANT',
-      content: '',
+      id: "temp-assistant-" + Date.now(),
+      role: "ASSISTANT",
+      content: "",
       createdAt: new Date().toISOString(),
-    }
+    };
 
-    setMessages((prev) => [...prev, tempUserMsg, tempAssistantMsg])
-    setIsLoading(true)
+    setMessages((prev) => [...prev, tempUserMsg, tempAssistantMsg]);
+    setIsLoading(true);
 
-    let accumulatedContent = ''
+    let accumulatedContent = "";
     const cancelFn = streamChatMessage(
       workspaceId,
       activeConvId,
       userQuery,
       (chunk) => {
-        accumulatedContent += chunk
+        accumulatedContent += chunk;
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === tempAssistantMsg.id ? { ...msg, content: accumulatedContent } : msg
-          )
-        )
+            msg.id === tempAssistantMsg.id
+              ? { ...msg, content: accumulatedContent }
+              : msg,
+          ),
+        );
       },
       (citations) => {
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === tempAssistantMsg.id ? { ...msg, citations } : msg
-          )
-        )
-        onUpdateCitations(citations)
+            msg.id === tempAssistantMsg.id ? { ...msg, citations } : msg,
+          ),
+        );
+        onUpdateCitations(citations);
       },
       () => {
-        setIsLoading(false)
-        cancelStreamRef.current = null
+        setIsLoading(false);
+        cancelStreamRef.current = null;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempAssistantMsg.id && !msg.content.trim()
+              ? {
+                  ...msg,
+                  content:
+                    "I could not generate a response based on the workspace sources provided.",
+                }
+              : msg,
+          ),
+        );
       },
       (err) => {
-        console.error('Stream error', err)
-        setError('An error occurred while streaming the answer. Please retry.')
-        setIsLoading(false)
-        cancelStreamRef.current = null
-      }
-    )
+        console.error("Stream error", err);
+        setError("An error occurred while streaming the answer. Please retry.");
+        setIsLoading(false);
+        cancelStreamRef.current = null;
+      },
+    );
 
-    cancelStreamRef.current = cancelFn
-  }
+    cancelStreamRef.current = cancelFn;
+  };
 
   const handleStopStream = () => {
     if (cancelStreamRef.current) {
-      cancelStreamRef.current()
-      cancelStreamRef.current = null
-      setIsLoading(false)
+      cancelStreamRef.current();
+      cancelStreamRef.current = null;
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault()
-      handleSend()
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSend();
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
@@ -158,7 +186,9 @@ export default function ChatPanel({
           </div>
           <div>
             <h1 className="font-semibold text-foreground tracking-tight text-sm md:text-base">
-              {conversationId ? 'Workspace Grounded Assistant' : 'New Knowledge Query'}
+              {conversationId
+                ? "Workspace Grounded Assistant"
+                : "New Knowledge Query"}
             </h1>
             <p className="text-xs text-muted-foreground">
               Traceable answers grounded in your private workspace documents
@@ -174,20 +204,24 @@ export default function ChatPanel({
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
               <Sparkles size={32} className="text-primary" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Ask Grounded Workspace Questions</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Ask Grounded Workspace Questions
+            </h2>
             <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-              Upload PDF, Markdown, or Plain-text documents to your workspace. Atlas will retrieve relevant chunks and generate accurate, cited answers.
+              Upload PDF, Markdown, or Plain-text documents to your workspace.
+              Atlas will retrieve relevant chunks and generate accurate, cited
+              answers.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
               {[
-                'Summarize workspace key points',
-                'What are the primary findings?',
-                'Compare document highlights',
+                "Summarize workspace key points",
+                "What are the primary findings?",
+                "Compare document highlights",
               ].map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => {
-                    setInput(suggestion)
+                    setInput(suggestion);
                   }}
                   className="p-3 text-left rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs font-medium text-foreground/80 hover:text-foreground shadow-sm"
                 >
@@ -201,39 +235,45 @@ export default function ChatPanel({
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-4 ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-4 ${message.role === "USER" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-xl lg:max-w-2xl px-5 py-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                    message.role === 'USER'
-                      ? 'bg-primary text-primary-foreground rounded-br-xs'
-                      : 'bg-card border border-border text-foreground rounded-bl-xs'
+                    message.role === "USER"
+                      ? "bg-primary text-primary-foreground rounded-br-xs"
+                      : "bg-card border border-border text-foreground rounded-bl-xs"
                   }`}
                 >
                   <div className="font-semibold text-xs mb-1.5 opacity-80">
-                    {message.role === 'USER' ? 'You' : 'Atlas Assistant'}
+                    {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
 
                   {/* Render Citation Badges for Assistant */}
-                  {message.role === 'ASSISTANT' && message.citations && message.citations.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
-                      <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                        <FileText size={12} /> Sources Cited:
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {message.citations.map((cit, idx) => (
-                          <span
-                            key={cit.chunkId || idx}
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md font-medium"
-                            title={cit.snippet}
-                          >
-                            [{idx + 1}] {cit.documentFilename}
-                          </span>
-                        ))}
+                  {message.role === "ASSISTANT" &&
+                    message.citations &&
+                    message.citations.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                          <FileText size={12} /> Sources Cited:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {message.citations.map((cit, idx) => (
+                            <span
+                              key={cit.chunkId || idx}
+                              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md font-medium"
+                              title={cit.snippet}
+                            >
+                              [{idx + 1}] {cit.documentFilename}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             ))}
@@ -241,7 +281,9 @@ export default function ChatPanel({
               <div className="flex gap-4 justify-start">
                 <div className="bg-card border border-border rounded-2xl rounded-bl-xs px-5 py-4 shadow-sm flex items-center gap-2">
                   <RefreshCw size={16} className="text-primary animate-spin" />
-                  <span className="text-xs text-muted-foreground">Synthesizing grounded response...</span>
+                  <span className="text-xs text-muted-foreground">
+                    Synthesizing grounded response...
+                  </span>
                 </div>
               </div>
             )}
@@ -256,7 +298,10 @@ export default function ChatPanel({
           <span className="flex items-center gap-2">
             <AlertCircle size={14} /> {error}
           </span>
-          <button onClick={() => setError(null)} className="font-medium hover:underline">
+          <button
+            onClick={() => setError(null)}
+            className="font-medium hover:underline"
+          >
             Dismiss
           </button>
         </div>
@@ -277,7 +322,12 @@ export default function ChatPanel({
             />
           </div>
           {isLoading ? (
-            <Button onClick={handleStopStream} variant="destructive" size="lg" className="self-end rounded-xl shadow">
+            <Button
+              onClick={handleStopStream}
+              variant="destructive"
+              size="lg"
+              className="self-end rounded-xl shadow"
+            >
               <Square size={16} />
             </Button>
           ) : (
@@ -293,5 +343,5 @@ export default function ChatPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }
