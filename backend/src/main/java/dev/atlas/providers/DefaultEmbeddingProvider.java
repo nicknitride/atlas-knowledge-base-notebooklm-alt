@@ -75,7 +75,7 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     }
     return embeddings;
   }
-
+//TODO decide if I'm keeping this
   private float[] embedDeterministic(String text) {
     float[] vector = new float[DIMENSION];
     try {
@@ -97,6 +97,7 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     return vector;
   }
 
+  //TODO add an embedding model
   private float[] embedOllama(String text) throws Exception {
     URI uri = URI.create(ollamaUrl + "/api/embeddings");
     HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
