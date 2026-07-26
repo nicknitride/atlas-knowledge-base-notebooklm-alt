@@ -30,7 +30,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import reactor.netty.http.client.HttpClient;
 
 
-//TODO use strategy pattern
+//TODO: use strategy pattern
 @Service
 public class DefaultLlmProvider implements LlmProvider {
   private static final Logger log = LoggerFactory.getLogger(DefaultLlmProvider.class);

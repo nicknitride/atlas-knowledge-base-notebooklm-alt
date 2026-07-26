@@ -69,7 +69,7 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     }
     return embeddings;
   }
-//TODO decide if I'm keeping this
+//TODO: decide if I'm keeping this
   private float[] embedDeterministic(String text) {
     float[] vector = new float[DIMENSION];
     try {
