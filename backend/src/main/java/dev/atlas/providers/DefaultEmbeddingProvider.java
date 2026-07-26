@@ -45,7 +45,7 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
 
   @Override
   public float[] embed(String text) {
-    if ("ollama".equalsIgnoreCase(providerType)) {
+    if ("ollama".equalsIgnoreCase(providerType) || "gemini".equalsIgnoreCase(providerType)) {
       try {
         return embedOllama(text);
       } catch (Exception e) {
@@ -56,12 +56,6 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
         return embedOpenAi(text);
       } catch (Exception e) {
         log.warn("OpenAI embedding failed, falling back to deterministic local embeddings: {}", e.getMessage());
-      }
-    } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
-      try {
-        return embedGemini(text);
-      } catch (Exception e) {
-        log.warn("Gemini embedding failed, falling back to deterministic local embeddings: {}", e.getMessage());
       }
     }
     return embedDeterministic(text);
@@ -153,43 +147,6 @@ public class DefaultEmbeddingProvider implements EmbeddingProvider {
     OpenAiEmbeddingResponse dto = objectMapper.readValue(response, OpenAiEmbeddingResponse.class);
     if (dto != null && dto.data() != null && !dto.data().isEmpty() && dto.data().get(0).embedding() != null) {
       return toFloatArray(dto.data().get(0).embedding());
-    }
-    return embedDeterministic(text);
-  }
-
-  private float[] embedGemini(String text) throws Exception {
-    URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + geminiEmbeddingProvider + ":embedContent?key=" + geminiApiKey);
-    HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
-    conn.setRequestMethod("POST");
-    conn.setDoOutput(true);
-    conn.setRequestProperty("Content-Type", "application/json");
-
-    String payload = objectMapper.writeValueAsString(java.util.Map.of(
-        "model", geminiEmbeddingProvider,
-        "content", java.util.Map.of("parts", List.of(java.util.Map.of("text", text))),
-        "outputDimensionality", DIMENSION
-    ));
-
-    try (OutputStream os = conn.getOutputStream()) {
-      os.write(payload.getBytes(StandardCharsets.UTF_8));
-    }
-
-    int status = conn.getResponseCode();
-    if (status != 200) {
-      try (InputStream err = conn.getErrorStream()) {
-        String errBody = err != null ? new String(err.readAllBytes(), StandardCharsets.UTF_8) : "";
-        throw new RuntimeException("Gemini embedding HTTP " + status + ": " + errBody);
-      }
-    }
-
-    String response;
-    try (InputStream is = conn.getInputStream()) {
-      response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-    }
-
-    GeminiEmbeddingResponse dto = objectMapper.readValue(response, GeminiEmbeddingResponse.class);
-    if (dto != null && dto.embedding() != null && dto.embedding().values() != null) {
-      return toFloatArray(dto.embedding().values());
     }
     return embedDeterministic(text);
   }

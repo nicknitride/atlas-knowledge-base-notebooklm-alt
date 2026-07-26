@@ -20,7 +20,6 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
 
 import io.netty.channel.ChannelOption;
@@ -30,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import reactor.netty.http.client.HttpClient;
 
+
+//TODO use strategy pattern
 @Service
 public class DefaultLlmProvider implements LlmProvider {
   private static final Logger log = LoggerFactory.getLogger(DefaultLlmProvider.class);
@@ -115,38 +116,6 @@ public class DefaultLlmProvider implements LlmProvider {
       streamFallback(messages, chunkConsumer, onComplete, onError);
     }
   }
-
-  // private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
-  //   Map<String, Object> body = Map.of(
-  //       "model", ollamaModel,
-  //       "stream", true,
-  //       "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-  //   );
-
-  //   webClient.post()
-  //       .uri(ollamaUrl + "/api/chat")
-  //       .contentType(MediaType.APPLICATION_JSON)
-  //       .bodyValue(body)
-  //       .retrieve()
-  //       .bodyToFlux(String.class)
-  //       .subscribe(
-  //           line -> {
-  //             try {
-  //               OllamaDtos.OllamaChatResponse chunk = objectMapper.readValue(line, OllamaDtos.OllamaChatResponse.class);
-  //               if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
-  //                 chunkConsumer.accept(chunk.message().content());
-  //               }
-  //             } catch (Exception e) {
-  //               log.trace("Error parsing Ollama stream chunk line: {}", line, e);
-  //             }
-  //           },
-  //           error -> {
-  //             log.warn("Ollama streaming error, falling back: {}", error.getMessage());
-  //             streamFallback(messages, chunkConsumer, onComplete, onError);
-  //           },
-  //           onComplete::run
-  //       );
-  // }
 
   private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
   Map<String, Object> body = Map.of(
