@@ -18,6 +18,7 @@ export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const handleSelectWorkspace = (id: string) => {
+    console.log("Selecting workspace(from page.tsx): ", id);
     setCurrentWorkspaceId(id);
     setCurrentConversationId(null);
     setCitations([]);

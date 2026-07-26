@@ -100,6 +100,7 @@ export default function Sidebar({
   }, [currentWorkspaceId, refreshTrigger]);
 
   const loadWorkspaces = async () => {
+    console.log("loadWorkspaces currentWorkspaceId =", currentWorkspaceId);
     try {
       setIsLoading(true);
       const data = await fetchWorkspaces();
@@ -186,6 +187,7 @@ export default function Sidebar({
 
   //New Conversation and Modal
   const handleNewConversation = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!currentWorkspaceId) return;
     try {
       const conv = await createConversation(currentWorkspaceId, newConverSationName);
@@ -688,7 +690,11 @@ export default function Sidebar({
       setShowNewConversationModal(false)
     }}
     onChange={(e)=>{setNewConversationName(e)}}
-      onSubmit={(e)=>{handleNewConversation(e)}}
+      onSubmit={(e)=>{
+        handleNewConversation(e)
+        setNewConversationName("");
+        setShowNewConversationModal(false);
+      }}
       ></ModalIdName>}
     </>
   );

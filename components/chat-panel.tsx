@@ -178,6 +178,7 @@ export default function ChatPanel({
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-6">
+        {/* //TODO fix messages.length===0 bug when submitting a question in a workspace with no conversation selected (docs tab selected) */}
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto">
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
