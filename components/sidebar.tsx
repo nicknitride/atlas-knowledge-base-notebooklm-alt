@@ -74,9 +74,16 @@ export default function Sidebar({
   const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string>("");
 
   //Delete Logic
-  const [showDeleteWorkspaceModal,setShowDeleteWorkspaceModal] = useState(false);
+  const [showDeleteWorkspaceModal, setShowDeleteWorkspaceModal] =
+    useState(false);
   const [deleteWorkspaceId, setDeleteWorkspaceId] = useState("");
   const [deleteWorkspaceName, setDeleteWorkspaceName] = useState("");
+
+  //NewConversationModal
+  const [showNewConversationModal, setShowNewConversationModal] =
+    useState(false);
+
+  const [newConverSationName, setNewConversationName] = useState("");
 
   // Load Workspaces
   useEffect(() => {
@@ -160,8 +167,7 @@ export default function Sidebar({
   };
 
   const handleDeleteWorkspace = async (id: string, name: string) => {
-    if (!id.trim() || !name.trim())
-      return;
+    if (!id.trim() || !name.trim()) return;
     try {
       await deleteWorkspace(id);
       const updated = workspaces.filter((w) => w.id !== id);
@@ -175,13 +181,13 @@ export default function Sidebar({
       console.error(err);
     }
   };
-  const handleNewConversation = async () => {
+
+  //New Conversation and Modal
+  const handleNewConversation = async (name: string) => {
     if (!currentWorkspaceId) return;
+
     try {
-      const conv = await createConversation(
-        currentWorkspaceId,
-        "New conversation",
-      );
+      const conv = await createConversation(currentWorkspaceId, name);
       setConversations((prev) => [conv, ...prev]);
       onSelectConversation(conv.id);
       onSelectTab("chat");
@@ -189,8 +195,7 @@ export default function Sidebar({
       console.error(err);
     }
   };
-
-  // const handleRenameConversation()
+  //
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -434,12 +439,13 @@ export default function Sidebar({
                       >
                         <Trash2 size={12} />
                       </button>
-                      <button
-                      onClick={(e)=>{
-                        // handleRenameConversation()
-                      }}>
-                        <Pencil size={12}/>
-                      </button>
+                      {/* <button
+                        onClick={(e) => {
+                          // handleRenameConversation()
+                        }}
+                      >
+                        <Pencil size={12} />
+                      </button> */}
                     </div>
                   ))
                 )}
@@ -527,7 +533,9 @@ export default function Sidebar({
         {/* Footer */}
         <div className="p-4 border-t border-sidebar-border space-y-2">
           <Button
-            onClick={handleNewConversation}
+            onClick={() => {
+              setShowNewConversationModal(true);
+            }}
             className="w-full shadow-sm"
             size="sm"
           >
@@ -632,11 +640,13 @@ export default function Sidebar({
             <h3 className="text-base font-semibold text-foreground mb-4">
               Delete Workspace
             </h3>
-            <form onSubmit={
-              (e) =>{
-                console.log("Delete event triggered: "+e);
-                handleDeleteWorkspace(deleteWorkspaceId, deleteWorkspaceName)
-            }} className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                console.log("Delete event triggered: " + e);
+                handleDeleteWorkspace(deleteWorkspaceId, deleteWorkspaceName);
+              }}
+              className="space-y-4"
+            >
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">
                   Delete "{deleteWorkspaceName}"?
@@ -655,10 +665,7 @@ export default function Sidebar({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                >
+                <Button type="submit" size="sm">
                   Confirm
                 </Button>
               </div>
@@ -668,6 +675,59 @@ export default function Sidebar({
       )}
 
       {/* TODO Rename Conversation Modal */}
+
+      {/* New Conversation Modal */}
+      {showNewConversationModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              Create New Conversation
+            </h3>
+            <form
+              onSubmit={(e) => {
+                handleNewConversation(
+                  newConverSationName
+                );
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">
+                  Conversation Name
+                </label>
+                <input
+                  type="text"
+                  value={newConverSationName}
+                  onChange={(e) => setNewConversationName(e.target.value)}
+                  placeholder="e.g. Rust Documentation Questions, Tailwind Guide"
+                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowNewConversationModal(false);
+                    setNewConversationName("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!newConverSationName.trim()}
+                >
+                  Confirm
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
