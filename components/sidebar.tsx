@@ -685,9 +685,7 @@ export default function Sidebar({
             </h3>
             <form
               onSubmit={(e) => {
-                handleNewConversation(
-                  newConverSationName
-                );
+                handleNewConversation(newConverSationName);
               }}
               className="space-y-4"
             >
