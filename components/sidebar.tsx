@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Clock,
   PencilIcon,
+  Pencil,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -433,6 +434,12 @@ export default function Sidebar({
                       >
                         <Trash2 size={12} />
                       </button>
+                      <button
+                      onClick={(e)=>{
+                        // handleRenameConversation()
+                      }}>
+                        <Pencil size={12}/>
+                      </button>
                     </div>
                   ))
                 )}
@@ -659,6 +666,8 @@ export default function Sidebar({
           </div>
         </div>
       )}
+
+      {/* TODO Rename Conversation Modal */}
     </>
   );
 }
