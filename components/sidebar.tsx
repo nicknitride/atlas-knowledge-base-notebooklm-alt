@@ -47,6 +47,8 @@ interface SidebarProps {
   onRefresh: () => void;
 }
 
+import { ModalIdName } from "./modal-id-name";
+
 export default function Sidebar({
   currentWorkspaceId,
   onSelectWorkspace,
@@ -183,11 +185,10 @@ export default function Sidebar({
   };
 
   //New Conversation and Modal
-  const handleNewConversation = async (name: string) => {
+  const handleNewConversation = async (e: React.FormEvent) => {
     if (!currentWorkspaceId) return;
-
     try {
-      const conv = await createConversation(currentWorkspaceId, name);
+      const conv = await createConversation(currentWorkspaceId, newConverSationName);
       setConversations((prev) => [conv, ...prev]);
       onSelectConversation(conv.id);
       onSelectTab("chat");
@@ -545,93 +546,43 @@ export default function Sidebar({
       </aside>
 
       {/* New Workspace Modal */}
-      {showNewWorkspaceModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">
-              Create New Workspace
-            </h3>
-            <form onSubmit={handleCreateWorkspace} className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">
-                  Workspace Name
-                </label>
-                <input
-                  type="text"
-                  value={newWorkspaceName}
-                  onChange={(e) => setNewWorkspaceName(e.target.value)}
-                  placeholder="e.g. Research Papers, Finance 2026"
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowNewWorkspaceModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!newWorkspaceName.trim()}
-                >
-                  Create Workspace
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {<ModalIdName
+      labelValue={newWorkspaceName}
+      title="Create New Workspace"
+      inputLabel="Workspace Name"
+      labelPlaceHolder="e.g. Research Papers, Finance 2026"
+      showModal = {showNewWorkspaceModal}
+      onChange={(e)=>{
+        setNewWorkspaceName(e);
+      }}
+      onCancel={()=>{
+        setShowNewWorkspaceModal(false);
+      }
+      }
+      onSubmit={handleCreateWorkspace}
+      >
+        </ModalIdName>}
+
+
 
       {/* Rename Workspace Modal */}
-      {showRenameWorkspaceModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">
-              Rename Workspace
-            </h3>
-            <form onSubmit={handleRenameWorkspace} className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">
-                  Workspace Name
-                </label>
-                <input
-                  type="text"
-                  value={renameWorkspaceText}
-                  onChange={(e) => setRenameWorkspaceText(e.target.value)}
-                  placeholder="e.g. Research Papers, Finance 2026"
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowRenameWorkspaceModal(false);
-                    setRenamingWorkspaceId("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!renameWorkspaceText.trim()}
-                >
-                  Confirm
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {<ModalIdName
+      labelValue= {renameWorkspaceText}
+      showModal = {showRenameWorkspaceModal}
+      onSubmit={handleRenameWorkspace}
+      title="Rename Workspace"
+      inputLabel=""
+      onCancel={()=>{
+        setRenamingWorkspaceId("");
+        setRenameWorkspaceText("")
+        setShowRenameWorkspaceModal(false);
+      }}
+      onChange={(e)=>{
+        setRenameWorkspaceText(e);
+      }}
+      labelPlaceHolder="e.g. Research Papers, Coding Projects"
+      >
+        </ModalIdName>}
 
       {/* Delete Workspace Modal */}
       {showDeleteWorkspaceModal && (
@@ -677,7 +628,7 @@ export default function Sidebar({
       {/* TODO Rename Conversation Modal */}
 
       {/* New Conversation Modal */}
-      {showNewConversationModal && (
+      {/* {showNewConversationModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-base font-semibold text-foreground mb-4">
@@ -685,7 +636,7 @@ export default function Sidebar({
             </h3>
             <form
               onSubmit={(e) => {
-                handleNewConversation(newConverSationName);
+                handleNewConversation;
               }}
               className="space-y-4"
             >
@@ -725,7 +676,20 @@ export default function Sidebar({
             </form>
           </div>
         </div>
-      )}
+      )} */}
+      {<ModalIdName
+      showModal={showNewConversationModal}
+      labelValue={newConverSationName}
+      title="Create New Conversation"
+      labelPlaceHolder="e.g. Rust Documentation Questions, Tailwind Guide"
+      inputLabel="Conversation Name"
+      onCancel={()=>{
+        setNewConversationName("")
+      setShowNewConversationModal(false)
+    }}
+    onChange={(e)=>{setNewConversationName(e)}}
+      onSubmit={(e)=>{handleNewConversation(e)}}
+      ></ModalIdName>}
     </>
   );
 }

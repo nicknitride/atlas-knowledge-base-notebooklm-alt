@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 
 interface ModalProps {
   showModal: boolean;
-  onSubmit: () => void;
+  onSubmit: React.FormEventHandler<HTMLFormElement>;
   title: string;
   inputLabel: string;
   onCancel: () => void;
@@ -30,8 +30,8 @@ export function ModalIdName({
             {title}
           </h3>
           <form
-            onSubmit={() => {
-              onSubmit();
+            onSubmit={(e) => {
+              onSubmit(e)
             }}
             className="space-y-4"
           >
