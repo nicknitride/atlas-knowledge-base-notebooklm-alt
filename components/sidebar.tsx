@@ -72,6 +72,11 @@ export default function Sidebar({
   const [renameWorkspaceText, setRenameWorkspaceText] = useState("");
   const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string>("");
 
+  //Delete Logic
+  const [showDeleteWorkspaceModal,setShowDeleteWorkspaceModal] = useState(false);
+  const [deleteWorkspaceId, setDeleteWorkspaceId] = useState("");
+  const [deleteWorkspaceName, setDeleteWorkspaceName] = useState("");
+
   // Load Workspaces
   useEffect(() => {
     loadWorkspaces();
@@ -154,7 +159,7 @@ export default function Sidebar({
   };
 
   const handleDeleteWorkspace = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete workspace "${name}"?`))
+    if (!id.trim() || !name.trim())
       return;
     try {
       await deleteWorkspace(id);
@@ -344,7 +349,9 @@ export default function Sidebar({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteWorkspace(ws.id, ws.name);
+                          setDeleteWorkspaceId(ws.id);
+                          setDeleteWorkspaceName(ws.name);
+                          setShowDeleteWorkspaceModal(true);
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity
                         cursor-pointer"
@@ -565,7 +572,7 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* New Workspace Modal */}
+      {/* Rename Workspace Modal */}
       {showRenameWorkspaceModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
@@ -602,6 +609,48 @@ export default function Sidebar({
                   type="submit"
                   size="sm"
                   disabled={!renameWorkspaceText.trim()}
+                >
+                  Confirm
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Workspace Modal */}
+      {showDeleteWorkspaceModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              Delete Workspace
+            </h3>
+            <form onSubmit={
+              (e) =>{
+                console.log("Delete event triggered: "+e);
+                handleDeleteWorkspace(deleteWorkspaceId, deleteWorkspaceName)
+            }} className="space-y-4">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">
+                  Delete "{deleteWorkspaceName}"?
+                </label>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowDeleteWorkspaceModal(false);
+                    setDeleteWorkspaceId("");
+                    setDeleteWorkspaceName("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
                 >
                   Confirm
                 </Button>
