@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import {
   Menu,
   X,
@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  PencilIcon,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -25,6 +26,7 @@ import {
   fetchWorkspaces,
   createWorkspace,
   deleteWorkspace,
+  renameWorkspace,
   fetchDocuments,
   uploadDocument,
   deleteDocument,
@@ -63,6 +65,12 @@ export default function Sidebar({
   const [showNewWorkspaceModal, setShowNewWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  //Renaming Logic
+  const [showRenameWorkspaceModal, setShowRenameWorkspaceModal] =
+    useState(false);
+  const [renameWorkspaceText, setRenameWorkspaceText] = useState("");
+  const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string>("");
 
   // Load Workspaces
   useEffect(() => {
@@ -123,6 +131,28 @@ export default function Sidebar({
     }
   };
 
+  const openRenameModal = (ws: Workspace) => {
+    setRenamingWorkspaceId(ws.id);
+    setRenameWorkspaceText(ws.name); // pre-fill input with current name
+    setShowRenameWorkspaceModal(true);
+  };
+
+  const handleRenameWorkspace = async (e: React.FormEvent) => {
+    e.preventDefault(); //prevents default focus
+    if (!renameWorkspaceText.trim() || !renamingWorkspaceId) return;
+    try {
+      const ws = await renameWorkspace(
+        renamingWorkspaceId,
+        renameWorkspaceText,
+      );
+      setShowRenameWorkspaceModal(false);
+      await loadWorkspaces();
+      onSelectWorkspace(ws.id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleDeleteWorkspace = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete workspace "${name}"?`))
       return;
@@ -139,7 +169,6 @@ export default function Sidebar({
       console.error(err);
     }
   };
-
   const handleNewConversation = async () => {
     if (!currentWorkspaceId) return;
     try {
@@ -154,6 +183,8 @@ export default function Sidebar({
       console.error(err);
     }
   };
+
+  // const handleRenameConversation()
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -309,16 +340,30 @@ export default function Sidebar({
                     <span className="truncate">{ws.name}</span>
                   </div>
                   {workspaces.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteWorkspace(ws.id, ws.name);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
-                      title="Delete workspace"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteWorkspace(ws.id, ws.name);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity
+                        cursor-pointer"
+                        title="Delete workspace"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); //stops events from traveling to parent
+                          openRenameModal(ws);
+                        }}
+                        className="opacity-70 group-hover:opacity-100 p-1 hover:hover:text-zinc-600 transition-opacity
+                      cursor-pointer"
+                        title="Rename Workspace"
+                      >
+                        <PencilIcon size={12} />
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
@@ -513,6 +558,52 @@ export default function Sidebar({
                   disabled={!newWorkspaceName.trim()}
                 >
                   Create Workspace
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Workspace Modal */}
+      {showRenameWorkspaceModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              Rename Workspace
+            </h3>
+            <form onSubmit={handleRenameWorkspace} className="space-y-4">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">
+                  Workspace Name
+                </label>
+                <input
+                  type="text"
+                  value={renameWorkspaceText}
+                  onChange={(e) => setRenameWorkspaceText(e.target.value)}
+                  placeholder="e.g. Research Papers, Finance 2026"
+                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowRenameWorkspaceModal(false);
+                    setRenamingWorkspaceId("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!renameWorkspaceText.trim()}
+                >
+                  Confirm
                 </Button>
               </div>
             </form>

@@ -102,7 +102,8 @@ export default function ChatPanel({
       createdAt: new Date().toISOString(),
     };
 
-    const tempAssistantMsg: Message = {//for future token streaming support
+    const tempAssistantMsg: Message = {
+      //for future token streaming support
       id: "temp-assistant-" + Date.now(),
       role: "ASSISTANT",
       content: "",
@@ -124,10 +125,10 @@ export default function ChatPanel({
         onUpdateCitations(citations);
       },
       async () => {
-          setIsLoading(false);
-          cancelStreamRef.current = null;
-          await loadConversation(workspaceId, activeConvId);
-          },
+        setIsLoading(false);
+        cancelStreamRef.current = null;
+        await loadConversation(workspaceId, activeConvId);
+      },
       (err) => {
         console.error("Stream error", err);
         setError("An error occurred while streaming the answer. Please retry.");
@@ -227,7 +228,7 @@ export default function ChatPanel({
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
                     <Streamdown
-                    key={message.id + "-" + message.content}
+                      key={message.id + "-" + message.content}
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
                     >
