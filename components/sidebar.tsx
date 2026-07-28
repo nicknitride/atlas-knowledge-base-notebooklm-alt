@@ -34,6 +34,7 @@ import {
   fetchConversations,
   createConversation,
   deleteConversation,
+  renameConversation,
 } from "@/lib/api";
 
 interface SidebarProps {
@@ -84,8 +85,12 @@ export default function Sidebar({
   //NewConversationModal
   const [showNewConversationModal, setShowNewConversationModal] =
     useState(false);
-
   const [newConverSationName, setNewConversationName] = useState("");
+
+  //Rename Conversation Modal
+  const [showRenameConvoModal, setShowRenameConvoModal] = useState(false);
+  const [renameConvoText, setRenameConvoText] = useState("");
+
 
   // Load Workspaces
   useEffect(() => {
@@ -213,6 +218,17 @@ export default function Sidebar({
       console.error(err);
     }
   };
+
+  const handleRenameConversation = async () =>{
+    if (!currentConversationId || !currentWorkspaceId) return
+    console.log("Invoked handle rename");
+    try{
+      await renameConversation(currentWorkspaceId, currentConversationId, renameConvoText);
+      setConversations(await fetchConversations(currentWorkspaceId).catch(() => []));
+    }catch (err){
+      console.error("Rename conversation function error: "+err);
+    }
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -355,6 +371,7 @@ export default function Sidebar({
                   </div>
                   {workspaces.length > 1 && (
                     <>
+                    <div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -379,6 +396,8 @@ export default function Sidebar({
                       >
                         <PencilIcon size={12} />
                       </button>
+                    </div>
+
                     </>
                   )}
                 </div>
@@ -442,13 +461,13 @@ export default function Sidebar({
                       >
                         <Trash2 size={12} />
                       </button>
-                      {/* <button
+                      <button
                         onClick={(e) => {
-                          // handleRenameConversation()
+                          setShowRenameConvoModal(true);
                         }}
                       >
                         <Pencil size={12} />
-                      </button> */}
+                      </button>
                     </div>
                   ))
                 )}
@@ -628,57 +647,34 @@ export default function Sidebar({
       )}
 
       {/* TODO Rename Conversation Modal */}
+      {
+        <ModalIdName
+        showModal={showRenameConvoModal}
+        labelValue={renameConvoText}
+        title="Rename Conversation"
+        labelPlaceHolder="e.g. Chapter 1 summary, Audit reports,..."
+        inputLabel="Enter new conversation name"
+        onCancel={()=>{
+          setShowRenameConvoModal(false);
+          setRenameConvoText("");
+        }
+        }
+        onChange={(e)=>{
+          setRenameConvoText(e);
+        }
+        }
+        onSubmit={(e)=>{
+          e.preventDefault();
+          handleRenameConversation();
+          setShowRenameConvoModal(false);
+          setRenameConvoText("");
+        }
+      }
+        ></ModalIdName>
+      }
+
 
       {/* New Conversation Modal */}
-      {/* {showNewConversationModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">
-              Create New Conversation
-            </h3>
-            <form
-              onSubmit={(e) => {
-                handleNewConversation;
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">
-                  Conversation Name
-                </label>
-                <input
-                  type="text"
-                  value={newConverSationName}
-                  onChange={(e) => setNewConversationName(e.target.value)}
-                  placeholder="e.g. Rust Documentation Questions, Tailwind Guide"
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowNewConversationModal(false);
-                    setNewConversationName("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!newConverSationName.trim()}
-                >
-                  Confirm
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )} */}
       {<ModalIdName
       showModal={showNewConversationModal}
       labelValue={newConverSationName}
