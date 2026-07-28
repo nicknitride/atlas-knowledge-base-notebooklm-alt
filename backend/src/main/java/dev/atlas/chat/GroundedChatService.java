@@ -22,6 +22,7 @@ public class GroundedChatService {
   private final MessageRepository messageRepository;
   private final ConversationRepository conversationRepository;
   private final JdbcTemplate jdbc;
+  private static final float MAXDROPCONST = 0.40F;
 
   public GroundedChatService(
       VectorSearchService retrievalService,
@@ -45,7 +46,8 @@ public class GroundedChatService {
     Message userMessage = messageRepository.save(new Message(conversationId, "USER", userQuery));
 
     // Retrieve relevant workspace chunks
-    List<RetrievedChunk> chunks = retrievalService.search(workspaceId, userQuery, 5, 0.2);
+    List<RetrievedChunk> chunks = filterByRelativeScore(workspaceId,userQuery, MAXDROPCONST);
+
 
     // Build system prompt
     List<LlmProvider.ChatMessage> promptMessages = buildPromptMessages(conversationId, userQuery, chunks);
@@ -66,6 +68,24 @@ public class GroundedChatService {
     return new ChatResult(assistantMessage, citations);
   }
 
+  private List<RetrievedChunk> filterByRelativeScore(UUID workspaceId, String userQuery,double maxDrop) {
+    List<RetrievedChunk> candidates = retrievalService.search(workspaceId, userQuery, 15, 0.10);
+    log.info("Retrieved {} candidates", candidates.size());
+    candidates.forEach(c ->
+            log.info("{} -> {}", c.documentFilename(), c.similarity()));
+    if (candidates.isEmpty() || workspaceId.toString().trim().isEmpty() || userQuery.isEmpty() ) return List.of();
+
+    double topScore = candidates.get(0).similarity();
+    // double minimumAcceptable = Math.max(0.50, topScore - maxDrop); // absolute floor or relative gap
+    double minimumAcceptable = topScore * 0.9;
+    log.info("Top score: {}", topScore);
+    log.info("Minimum acceptable: {}", minimumAcceptable);
+    List<RetrievedChunk> filtered = candidates.stream()
+            .filter(c -> c.similarity() >= minimumAcceptable)
+            .toList();
+    log.info("Remaining after filter: {}", filtered.size());
+    return filtered;
+  }
   public void streamChat(
       UUID workspaceId,
       UUID conversationId,
@@ -82,7 +102,7 @@ public class GroundedChatService {
       messageRepository.save(new Message(conversationId, "USER", userQuery));
 
       // Retrieve relevant workspace chunks
-      List<RetrievedChunk> chunks = retrievalService.search(workspaceId, userQuery, 5, 0.2);
+      List<RetrievedChunk> chunks = filterByRelativeScore(workspaceId, userQuery, MAXDROPCONST);
 
       // Build system prompt
       List<LlmProvider.ChatMessage> promptMessages = buildPromptMessages(conversationId, userQuery, chunks);
@@ -176,6 +196,7 @@ public class GroundedChatService {
           chunk.content(),
           chunk.similarity()
       ));
+      log.info("Sending citation similarity: {}", chunk.similarity());
     }
     return citations;
   }

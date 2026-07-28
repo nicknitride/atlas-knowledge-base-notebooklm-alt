@@ -89,7 +89,12 @@ export default function SourcesPanel({ citations }: SourcesPanelProps) {
                       {citation.similarity > 0 && (
                         <div className="text-right">
                           <p className="text-[11px] font-semibold text-emerald-500">
-                            {Math.round(citation.similarity * 100)}%
+                            {/* {Math.round(citation.similarity * 100)}% */}
+                            raw: {citation.similarity}
+                            <br />
+                            calc: {citation.similarity * 100}
+                            <br />
+                            round: {Math.round(citation.similarity * 100)}
                           </p>
                           <p className="text-[9px] text-muted-foreground">
                             match

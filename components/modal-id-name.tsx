@@ -31,7 +31,7 @@ export function ModalIdName({
           </h3>
           <form
             onSubmit={(e) => {
-              onSubmit(e)
+              onSubmit(e);
             }}
             className="space-y-4"
           >

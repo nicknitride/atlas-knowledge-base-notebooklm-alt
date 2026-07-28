@@ -91,7 +91,6 @@ export default function Sidebar({
   const [showRenameConvoModal, setShowRenameConvoModal] = useState(false);
   const [renameConvoText, setRenameConvoText] = useState("");
 
-
   // Load Workspaces
   useEffect(() => {
     loadWorkspaces();
@@ -195,7 +194,10 @@ export default function Sidebar({
     e.preventDefault();
     if (!currentWorkspaceId) return;
     try {
-      const conv = await createConversation(currentWorkspaceId, newConverSationName);
+      const conv = await createConversation(
+        currentWorkspaceId,
+        newConverSationName,
+      );
       setConversations((prev) => [conv, ...prev]);
       onSelectConversation(conv.id);
       onSelectTab("chat");
@@ -219,16 +221,22 @@ export default function Sidebar({
     }
   };
 
-  const handleRenameConversation = async () =>{
-    if (!currentConversationId || !currentWorkspaceId) return
+  const handleRenameConversation = async () => {
+    if (!currentConversationId || !currentWorkspaceId) return;
     console.log("Invoked handle rename");
-    try{
-      await renameConversation(currentWorkspaceId, currentConversationId, renameConvoText);
-      setConversations(await fetchConversations(currentWorkspaceId).catch(() => []));
-    }catch (err){
-      console.error("Rename conversation function error: "+err);
+    try {
+      await renameConversation(
+        currentWorkspaceId,
+        currentConversationId,
+        renameConvoText,
+      );
+      setConversations(
+        await fetchConversations(currentWorkspaceId).catch(() => []),
+      );
+    } catch (err) {
+      console.error("Rename conversation function error: " + err);
     }
-  }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -371,33 +379,32 @@ export default function Sidebar({
                   </div>
                   {workspaces.length > 1 && (
                     <>
-                    <div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteWorkspaceId(ws.id);
-                          setDeleteWorkspaceName(ws.name);
-                          setShowDeleteWorkspaceModal(true);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity
+                      <div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteWorkspaceId(ws.id);
+                            setDeleteWorkspaceName(ws.name);
+                            setShowDeleteWorkspaceModal(true);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity
                         cursor-pointer"
-                        title="Delete workspace"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); //stops events from traveling to parent
-                          openRenameModal(ws);
-                        }}
-                        className="opacity-70 group-hover:opacity-100 p-1 hover:hover:text-zinc-600 transition-opacity
+                          title="Delete workspace"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); //stops events from traveling to parent
+                            openRenameModal(ws);
+                          }}
+                          className="opacity-70 group-hover:opacity-100 p-1 hover:hover:text-zinc-600 transition-opacity
                       cursor-pointer"
-                        title="Rename Workspace"
-                      >
-                        <PencilIcon size={12} />
-                      </button>
-                    </div>
-
+                          title="Rename Workspace"
+                        >
+                          <PencilIcon size={12} />
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -567,43 +574,42 @@ export default function Sidebar({
       </aside>
 
       {/* New Workspace Modal */}
-      {<ModalIdName
-      labelValue={newWorkspaceName}
-      title="Create New Workspace"
-      inputLabel="Workspace Name"
-      labelPlaceHolder="e.g. Research Papers, Finance 2026"
-      showModal = {showNewWorkspaceModal}
-      onChange={(e)=>{
-        setNewWorkspaceName(e);
-      }}
-      onCancel={()=>{
-        setShowNewWorkspaceModal(false);
+      {
+        <ModalIdName
+          labelValue={newWorkspaceName}
+          title="Create New Workspace"
+          inputLabel="Workspace Name"
+          labelPlaceHolder="e.g. Research Papers, Finance 2026"
+          showModal={showNewWorkspaceModal}
+          onChange={(e) => {
+            setNewWorkspaceName(e);
+          }}
+          onCancel={() => {
+            setShowNewWorkspaceModal(false);
+          }}
+          onSubmit={handleCreateWorkspace}
+        ></ModalIdName>
       }
-      }
-      onSubmit={handleCreateWorkspace}
-      >
-        </ModalIdName>}
-
-
 
       {/* Rename Workspace Modal */}
-      {<ModalIdName
-      labelValue= {renameWorkspaceText}
-      showModal = {showRenameWorkspaceModal}
-      onSubmit={handleRenameWorkspace}
-      title="Rename Workspace"
-      inputLabel=""
-      onCancel={()=>{
-        setRenamingWorkspaceId("");
-        setRenameWorkspaceText("")
-        setShowRenameWorkspaceModal(false);
-      }}
-      onChange={(e)=>{
-        setRenameWorkspaceText(e);
-      }}
-      labelPlaceHolder="e.g. Research Papers, Coding Projects"
-      >
-        </ModalIdName>}
+      {
+        <ModalIdName
+          labelValue={renameWorkspaceText}
+          showModal={showRenameWorkspaceModal}
+          onSubmit={handleRenameWorkspace}
+          title="Rename Workspace"
+          inputLabel=""
+          onCancel={() => {
+            setRenamingWorkspaceId("");
+            setRenameWorkspaceText("");
+            setShowRenameWorkspaceModal(false);
+          }}
+          onChange={(e) => {
+            setRenameWorkspaceText(e);
+          }}
+          labelPlaceHolder="e.g. Research Papers, Coding Projects"
+        ></ModalIdName>
+      }
 
       {/* Delete Workspace Modal */}
       {showDeleteWorkspaceModal && (
@@ -649,49 +655,49 @@ export default function Sidebar({
       {/* TODO Rename Conversation Modal */}
       {
         <ModalIdName
-        showModal={showRenameConvoModal}
-        labelValue={renameConvoText}
-        title="Rename Conversation"
-        labelPlaceHolder="e.g. Chapter 1 summary, Audit reports,..."
-        inputLabel="Enter new conversation name"
-        onCancel={()=>{
-          setShowRenameConvoModal(false);
-          setRenameConvoText("");
-        }
-        }
-        onChange={(e)=>{
-          setRenameConvoText(e);
-        }
-        }
-        onSubmit={(e)=>{
-          e.preventDefault();
-          handleRenameConversation();
-          setShowRenameConvoModal(false);
-          setRenameConvoText("");
-        }
-      }
+          showModal={showRenameConvoModal}
+          labelValue={renameConvoText}
+          title="Rename Conversation"
+          labelPlaceHolder="e.g. Chapter 1 summary, Audit reports,..."
+          inputLabel="Enter new conversation name"
+          onCancel={() => {
+            setShowRenameConvoModal(false);
+            setRenameConvoText("");
+          }}
+          onChange={(e) => {
+            setRenameConvoText(e);
+          }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleRenameConversation();
+            setShowRenameConvoModal(false);
+            setRenameConvoText("");
+          }}
         ></ModalIdName>
       }
 
-
       {/* New Conversation Modal */}
-      {<ModalIdName
-      showModal={showNewConversationModal}
-      labelValue={newConverSationName}
-      title="Create New Conversation"
-      labelPlaceHolder="e.g. Rust Documentation Questions, Tailwind Guide"
-      inputLabel="Conversation Name"
-      onCancel={()=>{
-        setNewConversationName("")
-      setShowNewConversationModal(false)
-    }}
-    onChange={(e)=>{setNewConversationName(e)}}
-      onSubmit={(e)=>{
-        handleNewConversation(e)
-        setNewConversationName("");
-        setShowNewConversationModal(false);
-      }}
-      ></ModalIdName>}
+      {
+        <ModalIdName
+          showModal={showNewConversationModal}
+          labelValue={newConverSationName}
+          title="Create New Conversation"
+          labelPlaceHolder="e.g. Rust Documentation Questions, Tailwind Guide"
+          inputLabel="Conversation Name"
+          onCancel={() => {
+            setNewConversationName("");
+            setShowNewConversationModal(false);
+          }}
+          onChange={(e) => {
+            setNewConversationName(e);
+          }}
+          onSubmit={(e) => {
+            handleNewConversation(e);
+            setNewConversationName("");
+            setShowNewConversationModal(false);
+          }}
+        ></ModalIdName>
+      }
     </>
   );
 }

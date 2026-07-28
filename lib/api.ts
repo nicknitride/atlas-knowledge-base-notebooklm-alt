@@ -242,7 +242,9 @@ export function streamChatMessage(
               onChunk(data);
             } else if (currentEvent === "citations") {
               try {
-                onCitations(JSON.parse(data.trim()));
+                const parsed = JSON.parse(data.trim());
+                console.log(parsed);
+                onCitations(parsed);
               } catch (err) {
                 console.error("Failed to parse citations", err);
               }
