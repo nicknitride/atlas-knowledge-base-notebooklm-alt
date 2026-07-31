@@ -31,3 +31,10 @@ next-env.d.ts
 
 .cursor/
 *.class
+backend/target/
+target/
+*.jar
+*.war
+.idea/
+*.tmp
+*.swp

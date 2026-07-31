@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IngestionJobRepository extends JpaRepository<IngestionJob, UUID> {
   List<IngestionJob> findByStatus(String status);
+
+  List<IngestionJob> findByDocumentId(UUID documentId);
 }

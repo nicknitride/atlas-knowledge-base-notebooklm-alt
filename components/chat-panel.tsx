@@ -14,6 +14,7 @@ import {
   createConversation,
   streamChatMessage,
 } from "@/lib/api";
+import { messageForApiError } from "@/lib/api-error-messages";
 
 interface ChatPanelProps {
   workspaceId: string | null;
@@ -52,17 +53,23 @@ export default function ChatPanel({
 
   // Scroll to bottom when messages update
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   // Fetch Conversation detail when conversationId changes
   useEffect(() => {
+    if (cancelStreamRef.current) {
+      cancelStreamRef.current();
+      cancelStreamRef.current = null;
+      setIsLoading(false);
+    }
     if (workspaceId && conversationId) {
       loadConversation(workspaceId, conversationId);
     } else {
       setMessages([]);
       onUpdateCitations([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional on id change only
   }, [workspaceId, conversationId]);
 
   // Autofocus compose only when focusComposeToken bumps (post-create)
@@ -116,7 +123,7 @@ export default function ChatPanel({
         activeConvId = newConv.id;
         onConversationCreated(newConv.id);
       } catch (err) {
-        setError("Failed to create conversation");
+        setError(messageForApiError(err, "create conversation"));
         return;
       }
     }
@@ -136,7 +143,7 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (_chunk) => {
-        //Useful for future token streaming support
+        // Token streaming reserved for a future UI pass
       },
       (citations) => {
         onUpdateCitations(citations);
@@ -147,10 +154,10 @@ export default function ChatPanel({
         await loadConversation(workspaceId, activeConvId);
       },
       (err) => {
-        console.error("Stream error", err);
-        setError("An error occurred while streaming the answer. Please retry.");
+        setError(messageForApiError(err, "answer question"));
         setIsLoading(false);
         cancelStreamRef.current = null;
+        onUpdateCitations([]);
       },
     );
 

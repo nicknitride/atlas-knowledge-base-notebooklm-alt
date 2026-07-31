@@ -1,5 +1,8 @@
 package dev.atlas.chat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.atlas.support.ApiError;
+import dev.atlas.support.ApiException;
 import dev.atlas.workspaces.WorkspaceLookup;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +11,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,11 +22,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/conversations")
@@ -32,18 +34,21 @@ public class ConversationController {
   private final MessageRepository messages;
   private final GroundedChatService chatService;
   private final JdbcTemplate jdbc;
+  private final ObjectMapper objectMapper;
 
   public ConversationController(
       WorkspaceLookup workspaces,
       ConversationRepository conversations,
       MessageRepository messages,
       GroundedChatService chatService,
-      JdbcTemplate jdbc) {
+      JdbcTemplate jdbc,
+      ObjectMapper objectMapper) {
     this.workspaces = workspaces;
     this.conversations = conversations;
     this.messages = messages;
     this.chatService = chatService;
     this.jdbc = jdbc;
+    this.objectMapper = objectMapper;
   }
 
   @GetMapping
@@ -68,7 +73,7 @@ public class ConversationController {
   public ConversationDetailResponse get(@PathVariable UUID workspaceId, @PathVariable UUID id) {
     workspaces.requireExists(workspaceId);
     Conversation conversation = conversations.findByIdAndWorkspaceId(id, workspaceId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found"));
     List<Message> msgList = messages.findByConversationIdOrderByCreatedAtAsc(id);
     List<MessageWithCitations> msgWithCitations = msgList.stream().map(m -> {
       List<CitationResponse> citations = fetchCitations(m.id());
@@ -81,7 +86,7 @@ public class ConversationController {
   public ConversationResponse rename(@PathVariable UUID workspaceId, @PathVariable UUID id, @Valid @RequestBody RenameConversationRequest request) {
     workspaces.requireExists(workspaceId);
     Conversation conversation = conversations.findByIdAndWorkspaceId(id, workspaceId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found"));
     conversation.rename(request.title().trim());
     return ConversationResponse.from(conversations.save(conversation));
   }
@@ -91,7 +96,7 @@ public class ConversationController {
   public void delete(@PathVariable UUID workspaceId, @PathVariable UUID id) {
     workspaces.requireExists(workspaceId);
     Conversation conversation = conversations.findByIdAndWorkspaceId(id, workspaceId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found"));
     conversations.delete(conversation);
   }
 
@@ -145,7 +150,21 @@ public class ConversationController {
             emitter.completeWithError(e);
           }
         },
-        error -> emitter.completeWithError(error)
+        error -> {
+          try {
+            String code = "PROVIDER_UNAVAILABLE";
+            String message = "AI backend is unavailable. Check the local AI endpoint and model.";
+            if (error instanceof ApiException apiException) {
+              code = apiException.code();
+              message = apiException.getMessage();
+            }
+            ApiError body = new ApiError(code, message, MDC.get("requestId"));
+            emitter.send(SseEmitter.event().name("error").data(objectMapper.writeValueAsString(body)));
+            emitter.complete();
+          } catch (IOException ioException) {
+            emitter.completeWithError(ioException);
+          }
+        }
     );
 
     return emitter;

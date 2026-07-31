@@ -28,6 +28,9 @@ public class IngestionJob {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "started_at")
+  private Instant startedAt;
+
   protected IngestionJob() {}
 
   public IngestionJob(UUID documentId) {
@@ -38,13 +41,33 @@ public class IngestionJob {
     this.updatedAt = Instant.now();
   }
 
-  public UUID id() { return id; }
-  public UUID documentId() { return documentId; }
-  public String status() { return status; }
-  public String errorMessage() { return errorMessage; }
+  public UUID id() {
+    return id;
+  }
+
+  public UUID documentId() {
+    return documentId;
+  }
+
+  public String status() {
+    return status;
+  }
+
+  public String errorMessage() {
+    return errorMessage;
+  }
+
+  public Instant startedAt() {
+    return startedAt;
+  }
+
+  public Instant updatedAt() {
+    return updatedAt;
+  }
 
   public void markProcessing() {
     this.status = "PROCESSING";
+    this.startedAt = Instant.now();
     this.updatedAt = Instant.now();
   }
 
@@ -62,6 +85,7 @@ public class IngestionJob {
   public void markPending() {
     this.status = "PENDING";
     this.errorMessage = null;
+    this.startedAt = null;
     this.updatedAt = Instant.now();
   }
 }

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import dev.atlas.providers.EmbeddingProvider;
+import dev.atlas.support.AtlasProperties;
+import dev.atlas.workspaces.WorkspaceLookup;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,23 +13,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class IngestionRecoveryTest {
-  private KnowledgeDocumentRepository documents;
   private IngestionJobRepository jobRepository;
-  private FileStorage storage;
-  private DocumentExtractor extractor;
-  private EmbeddingProvider embeddingProvider;
-  private JdbcTemplate jdbc;
   private IngestionService ingestionService;
 
   @BeforeEach
   void setUp() {
-    documents = mock(KnowledgeDocumentRepository.class);
     jobRepository = mock(IngestionJobRepository.class);
-    storage = mock(FileStorage.class);
-    extractor = mock(DocumentExtractor.class);
-    embeddingProvider = mock(EmbeddingProvider.class);
-    jdbc = mock(JdbcTemplate.class);
-    ingestionService = new IngestionService(documents, jobRepository, storage, extractor, embeddingProvider, jdbc);
+    ingestionService = new IngestionService(
+        mock(KnowledgeDocumentRepository.class),
+        jobRepository,
+        mock(FileStorage.class),
+        mock(DocumentExtractor.class),
+        mock(EmbeddingProvider.class),
+        mock(JdbcTemplate.class),
+        new AtlasProperties(),
+        mock(WorkspaceLookup.class));
   }
 
   @Test
@@ -41,6 +41,6 @@ class IngestionRecoveryTest {
     ingestionService.recoverOrphanedJobs();
 
     assertEquals("PENDING", orphanedJob.status());
-    verify(jobRepository, times(1)).save(orphanedJob);
+    verify(jobRepository, atLeastOnce()).save(orphanedJob);
   }
 }

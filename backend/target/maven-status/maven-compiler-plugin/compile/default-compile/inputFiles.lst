@@ -24,6 +24,10 @@
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/dto/OpenAiDtos.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/retrieval/RetrievedChunk.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/retrieval/VectorSearchService.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/ApiError.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/ApiErrorHandler.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/ApiException.java
+/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/AtlasProperties.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/RequestCorrelationFilter.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/support/WebConfiguration.java
 /Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/workspaces/Workspace.java

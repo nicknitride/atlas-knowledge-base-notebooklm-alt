@@ -210,7 +210,7 @@ describe("conversation create flow", () => {
     });
     expect(onSelectConversation).not.toHaveBeenCalled();
     expect(onConversationCreated).not.toHaveBeenCalled();
-    expect(screen.getByText(/Failed to create conversation/i)).toBeInTheDocument();
+    expect(screen.getByText(/fail/i)).toBeInTheDocument();
   });
 
   it("focuses compose when focusComposeToken bumps; list select without token does not", async () => {

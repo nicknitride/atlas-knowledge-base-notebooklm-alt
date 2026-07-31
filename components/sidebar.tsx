@@ -34,10 +34,11 @@ import {
   deleteConversation,
   renameConversation,
 } from "@/lib/api";
+import { messageForApiError } from "@/lib/api-error-messages";
 
 interface SidebarProps {
   currentWorkspaceId: string | null;
-  onSelectWorkspace: (id: string) => void;
+  onSelectWorkspace: (id: string | null) => void;
   currentConversationId: string | null;
   onSelectConversation: (id: string | null) => void;
   /** Fired only after successful create (bumps compose focus in parent). */
@@ -105,6 +106,16 @@ export default function Sidebar({
     useState(false);
   const [deleteWorkspaceId, setDeleteWorkspaceId] = useState("");
   const [deleteWorkspaceName, setDeleteWorkspaceName] = useState("");
+  const [deleteWorkspaceError, setDeleteWorkspaceError] = useState<
+    string | null
+  >(null);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
+  const [workspaceMutationError, setWorkspaceMutationError] = useState<
+    string | null
+  >(null);
+  const [itemMutationError, setItemMutationError] = useState<string | null>(
+    null,
+  );
 
   //NewConversationModal
   const [showNewConversationModal, setShowNewConversationModal] =
@@ -194,6 +205,7 @@ export default function Sidebar({
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkspaceName.trim()) return;
+    setWorkspaceMutationError(null);
     try {
       const ws = await createWorkspace(newWorkspaceName.trim());
       setNewWorkspaceName("");
@@ -201,7 +213,9 @@ export default function Sidebar({
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      console.error(err);
+      setWorkspaceMutationError(
+        messageForApiError(err, "create workspace"),
+      );
     }
   };
 
@@ -214,32 +228,48 @@ export default function Sidebar({
   const handleRenameWorkspace = async (e: React.FormEvent) => {
     e.preventDefault(); //prevents default focus
     if (!renameWorkspaceText.trim() || !renamingWorkspaceId) return;
+    setWorkspaceMutationError(null);
     try {
       const ws = await renameWorkspace(
         renamingWorkspaceId,
         renameWorkspaceText,
       );
       setShowRenameWorkspaceModal(false);
+      setRenamingWorkspaceId("");
+      setRenameWorkspaceText("");
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      console.error(err);
+      setWorkspaceMutationError(
+        messageForApiError(err, "rename workspace"),
+      );
     }
   };
 
   const handleDeleteWorkspace = async (id: string, name: string) => {
     if (!id.trim() || !name.trim()) return;
+    setDeleteWorkspaceError(null);
+    setIsDeletingWorkspace(true);
     try {
       await deleteWorkspace(id);
       const updated = workspaces.filter((w) => w.id !== id);
       setWorkspaces(updated);
-      if (updated.length > 0) {
-        onSelectWorkspace(updated[0].id);
-      } else {
-        loadWorkspaces();
+      setShowDeleteWorkspaceModal(false);
+      setDeleteWorkspaceId("");
+      setDeleteWorkspaceName("");
+      if (currentWorkspaceId === id) {
+        if (updated.length > 0) {
+          onSelectWorkspace(updated[0].id);
+        } else {
+          onSelectWorkspace(null);
+          setDocuments([]);
+          setConversations([]);
+        }
       }
     } catch (err) {
-      console.error(err);
+      setDeleteWorkspaceError(messageForApiError(err, "delete workspace"));
+    } finally {
+      setIsDeletingWorkspace(false);
     }
   };
 
@@ -260,8 +290,9 @@ export default function Sidebar({
       setShowNewConversationModal(false);
       setNewConversationName("");
     } catch (err) {
-      console.error(err);
-      setCreateConversationError("Failed to create conversation. Please retry.");
+      setCreateConversationError(
+        messageForApiError(err, "create conversation"),
+      );
     }
   };
   //
@@ -269,6 +300,7 @@ export default function Sidebar({
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!currentWorkspaceId) return;
+    setItemMutationError(null);
     try {
       await deleteConversation(currentWorkspaceId, id);
       setConversations((prev) => prev.filter((c) => c.id !== id));
@@ -276,13 +308,13 @@ export default function Sidebar({
         onSelectConversation(null);
       }
     } catch (err) {
-      console.error(err);
+      setItemMutationError(messageForApiError(err, "delete conversation"));
     }
   };
 
   const handleRenameConversation = async () => {
     if (!currentConversationId || !currentWorkspaceId) return;
-    console.log("Invoked handle rename");
+    setItemMutationError(null);
     try {
       await renameConversation(
         currentWorkspaceId,
@@ -293,7 +325,7 @@ export default function Sidebar({
         await fetchConversations(currentWorkspaceId).catch(() => []),
       );
     } catch (err) {
-      console.error("Rename conversation function error: " + err);
+      setItemMutationError(messageForApiError(err, "rename conversation"));
     }
   };
 
@@ -332,8 +364,8 @@ export default function Sidebar({
           clearInterval(intervalId);
         }
       }, 2000);
-    } catch (err: any) {
-      setUploadError(err.message || "Failed to upload document");
+    } catch (err: unknown) {
+      setUploadError(messageForApiError(err, "upload document"));
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -343,12 +375,13 @@ export default function Sidebar({
   const handleDeleteDocument = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
     if (!currentWorkspaceId) return;
+    setItemMutationError(null);
     try {
       await deleteDocument(currentWorkspaceId, docId);
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
       onRefresh();
     } catch (err) {
-      console.error(err);
+      setItemMutationError(messageForApiError(err, "delete document"));
     }
   };
 
@@ -448,6 +481,18 @@ export default function Sidebar({
             onDismiss={() => setCreateConversationError(null)}
           />
         ) : null}
+        {workspaceMutationError ? (
+          <ErrorBanner
+            message={workspaceMutationError}
+            onDismiss={() => setWorkspaceMutationError(null)}
+          />
+        ) : null}
+        {itemMutationError ? (
+          <ErrorBanner
+            message={itemMutationError}
+            onDismiss={() => setItemMutationError(null)}
+          />
+        ) : null}
 
         {/* Content Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -523,36 +568,34 @@ export default function Sidebar({
                       {ws.name}
                     </span>
                   </div>
-                  {workspaces.length > 1 && (
-                    <>
-                      <div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteWorkspaceId(ws.id);
-                            setDeleteWorkspaceName(ws.name);
-                            setShowDeleteWorkspaceModal(true);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity
-                        cursor-pointer"
-                          title="Delete workspace"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); //stops events from traveling to parent
-                            openRenameModal(ws);
-                          }}
-                          className="opacity-70 group-hover:opacity-100 p-1 hover:hover:text-zinc-600 transition-opacity
-                      cursor-pointer"
-                          title="Rename Workspace"
-                        >
-                          <PencilIcon size={12} />
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteWorkspaceError(null);
+                        setDeleteWorkspaceId(ws.id);
+                        setDeleteWorkspaceName(ws.name);
+                        setShowDeleteWorkspaceModal(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity cursor-pointer"
+                      title="Delete workspace"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setWorkspaceMutationError(null);
+                        openRenameModal(ws);
+                      }}
+                      className="opacity-70 group-hover:opacity-100 p-1 hover:text-zinc-600 transition-opacity cursor-pointer"
+                      title="Rename Workspace"
+                    >
+                      <PencilIcon size={12} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -746,11 +789,24 @@ export default function Sidebar({
                           {doc.filename}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <StatusBadge status={doc.status} />
-                        <span className="text-muted-foreground">
-                          {new Date(doc.createdAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex flex-col gap-0.5 text-[10px]">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge
+                            status={doc.status}
+                            failureReason={doc.failureReason}
+                          />
+                          <span className="text-muted-foreground">
+                            {new Date(doc.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {doc.status === "FAILED" && doc.failureReason ? (
+                          <p
+                            className="text-rose-500/90 truncate"
+                            title={doc.failureReason}
+                          >
+                            {doc.failureReason}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <button
@@ -848,8 +904,11 @@ export default function Sidebar({
             </h3>
             <form
               onSubmit={(e) => {
-                console.log("Delete event triggered: " + e);
-                handleDeleteWorkspace(deleteWorkspaceId, deleteWorkspaceName);
+                e.preventDefault();
+                void handleDeleteWorkspace(
+                  deleteWorkspaceId,
+                  deleteWorkspaceName,
+                );
               }}
               className="space-y-4"
             >
@@ -858,21 +917,33 @@ export default function Sidebar({
                   Delete "{deleteWorkspaceName}"?
                 </label>
               </div>
+              {deleteWorkspaceError ? (
+                <ErrorBanner
+                  message={deleteWorkspaceError}
+                  onDismiss={() => setDeleteWorkspaceError(null)}
+                />
+              ) : null}
               <div className="flex gap-2 justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={isDeletingWorkspace}
                   onClick={() => {
                     setShowDeleteWorkspaceModal(false);
                     setDeleteWorkspaceId("");
                     setDeleteWorkspaceName("");
+                    setDeleteWorkspaceError(null);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm">
-                  Confirm
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isDeletingWorkspace}
+                >
+                  {isDeletingWorkspace ? "Deleting…" : "Confirm"}
                 </Button>
               </div>
             </form>
@@ -930,7 +1001,13 @@ export default function Sidebar({
   );
 }
 
-function StatusBadge({ status }: { status: DocumentItem["status"] }) {
+function StatusBadge({
+  status,
+  failureReason,
+}: {
+  status: DocumentItem["status"];
+  failureReason?: string;
+}) {
   switch (status) {
     case "COMPLETE":
       return (
@@ -952,7 +1029,10 @@ function StatusBadge({ status }: { status: DocumentItem["status"] }) {
       );
     case "FAILED":
       return (
-        <span className="inline-flex items-center gap-1 text-rose-500 font-medium">
+        <span
+          className="inline-flex items-center gap-1 text-rose-500 font-medium"
+          title={failureReason}
+        >
           <AlertCircle size={10} /> Failed
         </span>
       );

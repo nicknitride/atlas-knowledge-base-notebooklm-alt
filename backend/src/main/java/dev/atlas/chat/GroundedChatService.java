@@ -3,12 +3,14 @@ package dev.atlas.chat;
 import dev.atlas.providers.LlmProvider;
 import dev.atlas.retrieval.RetrievedChunk;
 import dev.atlas.retrieval.VectorSearchService;
+import dev.atlas.support.ApiException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,52 +42,45 @@ public class GroundedChatService {
   @Transactional
   public ChatResult chat(UUID workspaceId, UUID conversationId, String userQuery) {
     Conversation conversation = conversationRepository.findByIdAndWorkspaceId(conversationId, workspaceId)
-        .orElseThrow(() -> new IllegalArgumentException("Conversation not found in workspace"));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found in workspace"));
 
-    // Save user message
-    Message userMessage = messageRepository.save(new Message(conversationId, "USER", userQuery));
+    messageRepository.saveAndFlush(new Message(conversationId, "USER", userQuery));
 
-    // Retrieve relevant workspace chunks
-    List<RetrievedChunk> chunks = filterByRelativeScore(workspaceId,userQuery, MAXDROPCONST);
-
-
-    // Build system prompt
+    List<RetrievedChunk> chunks = filterByRelativeScore(workspaceId, userQuery, MAXDROPCONST);
     List<LlmProvider.ChatMessage> promptMessages = buildPromptMessages(conversationId, userQuery, chunks);
 
-    // Call LLM
-    String assistantAnswer = llmProvider.generate(promptMessages);
+    String assistantAnswer;
+    try {
+      assistantAnswer = llmProvider.generate(promptMessages);
+    } catch (Exception e) {
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "PROVIDER_UNAVAILABLE",
+          "AI backend is unavailable. Check the local AI endpoint and model.");
+    }
 
-    // Save assistant message
-    Message assistantMessage = messageRepository.save(new Message(conversationId, "ASSISTANT", assistantAnswer));
-
-    // Save citations
+    Message assistantMessage =
+        messageRepository.saveAndFlush(new Message(conversationId, "ASSISTANT", assistantAnswer));
     List<CitationResponse> citations = saveCitations(assistantMessage.id(), chunks);
 
-    // Update conversation timestamp
     conversation.touch();
     conversationRepository.save(conversation);
 
     return new ChatResult(assistantMessage, citations);
   }
 
-  private List<RetrievedChunk> filterByRelativeScore(UUID workspaceId, String userQuery,double maxDrop) {
+  private List<RetrievedChunk> filterByRelativeScore(UUID workspaceId, String userQuery, double maxDrop) {
     List<RetrievedChunk> candidates = retrievalService.search(workspaceId, userQuery, 15, 0.10);
     log.info("Retrieved {} candidates", candidates.size());
-    candidates.forEach(c ->
-            log.info("{} -> {}", c.documentFilename(), c.similarity()));
-    if (candidates.isEmpty() || workspaceId.toString().trim().isEmpty() || userQuery.isEmpty() ) return List.of();
+    if (candidates.isEmpty() || userQuery == null || userQuery.isBlank()) {
+      return List.of();
+    }
 
     double topScore = candidates.get(0).similarity();
-    // double minimumAcceptable = Math.max(0.50, topScore - maxDrop); // absolute floor or relative gap
     double minimumAcceptable = topScore * 0.9;
-    log.info("Top score: {}", topScore);
-    log.info("Minimum acceptable: {}", minimumAcceptable);
-    List<RetrievedChunk> filtered = candidates.stream()
-            .filter(c -> c.similarity() >= minimumAcceptable)
-            .toList();
-    log.info("Remaining after filter: {}", filtered.size());
-    return filtered;
+    return candidates.stream().filter(c -> c.similarity() >= minimumAcceptable).toList();
   }
+
   public void streamChat(
       UUID workspaceId,
       UUID conversationId,
@@ -96,15 +91,11 @@ public class GroundedChatService {
       Consumer<Throwable> onError) {
     try {
       Conversation conversation = conversationRepository.findByIdAndWorkspaceId(conversationId, workspaceId)
-          .orElseThrow(() -> new IllegalArgumentException("Conversation not found in workspace"));
+          .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found in workspace"));
 
-      // Save user message
-      messageRepository.save(new Message(conversationId, "USER", userQuery));
+      messageRepository.saveAndFlush(new Message(conversationId, "USER", userQuery));
 
-      // Retrieve relevant workspace chunks
       List<RetrievedChunk> chunks = filterByRelativeScore(workspaceId, userQuery, MAXDROPCONST);
-
-      // Build system prompt
       List<LlmProvider.ChatMessage> promptMessages = buildPromptMessages(conversationId, userQuery, chunks);
 
       StringBuilder fullAnswer = new StringBuilder();
@@ -115,12 +106,16 @@ public class GroundedChatService {
             chunkConsumer.accept(chunk);
           },
           () -> {
-            // Save assistant message
             String answerText = fullAnswer.toString().trim();
             if (answerText.isEmpty()) {
-              answerText = "I could not generate a response based on the workspace sources provided.";
+              onError.accept(new ApiException(
+                  HttpStatus.SERVICE_UNAVAILABLE,
+                  "PROVIDER_UNAVAILABLE",
+                  "AI backend returned an empty response"));
+              return;
             }
-            Message assistantMessage = messageRepository.save(new Message(conversationId, "ASSISTANT", answerText));
+            Message assistantMessage =
+                messageRepository.saveAndFlush(new Message(conversationId, "ASSISTANT", answerText));
             List<CitationResponse> citations = saveCitations(assistantMessage.id(), chunks);
             citationConsumer.accept(citations);
 
@@ -128,14 +123,28 @@ public class GroundedChatService {
             conversationRepository.save(conversation);
             onComplete.run();
           },
-          onError
-      );
-    } catch (Exception e) {
+          error -> {
+            if (error instanceof ApiException apiException) {
+              onError.accept(apiException);
+            } else {
+              onError.accept(new ApiException(
+                  HttpStatus.SERVICE_UNAVAILABLE,
+                  "PROVIDER_UNAVAILABLE",
+                  "AI backend is unavailable. Check the local AI endpoint and model."));
+            }
+          });
+    } catch (ApiException e) {
       onError.accept(e);
+    } catch (Exception e) {
+      onError.accept(new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "PROVIDER_UNAVAILABLE",
+          "AI backend is unavailable. Check the local AI endpoint and model."));
     }
   }
 
-  private List<LlmProvider.ChatMessage> buildPromptMessages(UUID conversationId, String userQuery, List<RetrievedChunk> chunks) {
+  private List<LlmProvider.ChatMessage> buildPromptMessages(
+      UUID conversationId, String userQuery, List<RetrievedChunk> chunks) {
     List<LlmProvider.ChatMessage> promptMessages = new ArrayList<>();
 
     StringBuilder systemPrompt = new StringBuilder();
@@ -151,14 +160,14 @@ public class GroundedChatService {
       systemPrompt.append("=== RETRIEVED SOURCES ===\n");
       for (int i = 0; i < chunks.size(); i++) {
         RetrievedChunk c = chunks.get(i);
-        systemPrompt.append(String.format("[Source %d: %s (ordinal %d)]\n- Content: %s\n\n",
+        systemPrompt.append(String.format(
+            "[Source %d: %s (ordinal %d)]\n- Content: %s\n\n",
             i + 1, c.documentFilename(), c.ordinal(), c.content()));
       }
     }
 
     promptMessages.add(new LlmProvider.ChatMessage("system", systemPrompt.toString()));
 
-    // Load recent history safely
     List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
     if (history != null) {
       for (Message m : history) {
@@ -179,13 +188,15 @@ public class GroundedChatService {
     }
     for (int i = 0; i < chunks.size(); i++) {
       RetrievedChunk chunk = chunks.get(i);
+      if (chunk.documentId() == null || chunk.documentFilename() == null || chunk.content() == null) {
+        continue;
+      }
       try {
         jdbc.update(
             "INSERT INTO message_citations (message_id, chunk_id, ordinal) VALUES (?, ?, ?)",
-            messageId, chunk.chunkId(), i + 1
-        );
+            messageId, chunk.chunkId(), i + 1);
       } catch (Exception e) {
-        log.warn("Failed to insert citation link for message {} and chunk {}: {}", messageId, chunk.chunkId(), e.getMessage());
+        log.warn("Failed to insert citation link for message {}: {}", messageId, e.getMessage());
       }
       citations.add(new CitationResponse(
           chunk.chunkId(),
@@ -194,9 +205,7 @@ public class GroundedChatService {
           chunk.ordinal(),
           chunk.sourceLocator(),
           chunk.content(),
-          chunk.similarity()
-      ));
-      log.info("Sending citation similarity: {}", chunk.similarity());
+          chunk.similarity()));
     }
     return citations;
   }

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import dev.atlas.support.ApiException;
 
 @RestController
 @RequestMapping("/api/workspaces")
@@ -50,7 +50,8 @@ class WorkspaceController {
   void delete(@PathVariable UUID id) { repository.delete(find(id)); }
 
   private Workspace find(UUID id) {
-    return repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
+    return repository.findById(id)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Workspace not found"));
   }
 
   record WorkspaceRequest(@NotBlank @Size(max = 120) String name) {}

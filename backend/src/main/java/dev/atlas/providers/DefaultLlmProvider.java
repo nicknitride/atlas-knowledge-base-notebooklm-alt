@@ -61,12 +61,14 @@ public class DefaultLlmProvider implements LlmProvider {
 
   public DefaultLlmProvider(ObjectMapper objectMapper, WebClient.Builder webClientBuilder) {
     this.objectMapper = objectMapper;
+    // Connect timeout stays short so unreachable backends fail closed quickly (SC-003).
+    // Response/read timeout is longer so healthy local models can finish generation.
     HttpClient httpClient = HttpClient.create()
-        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30000)
-        .responseTimeout(Duration.ofSeconds(60))
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5_000)
+        .responseTimeout(Duration.ofSeconds(120))
         .doOnConnected(conn -> conn
-            .addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
-            .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS)));
+            .addHandlerLast(new ReadTimeoutHandler(120, TimeUnit.SECONDS))
+            .addHandlerLast(new WriteTimeoutHandler(30, TimeUnit.SECONDS)));
 
     this.webClient = webClientBuilder
         .clientConnector(new ReactorClientHttpConnector(httpClient))
@@ -78,42 +80,44 @@ public class DefaultLlmProvider implements LlmProvider {
     return providerType;
   }
 
+  private boolean isLocalOrOllama() {
+    return providerType == null
+        || providerType.isBlank()
+        || "local".equalsIgnoreCase(providerType)
+        || "ollama".equalsIgnoreCase(providerType);
+  }
+
   @Override
   public String generate(List<ChatMessage> messages) {
-    if ("ollama".equalsIgnoreCase(providerType)) {
-      try {
+    try {
+      if (isLocalOrOllama()) {
         return generateOllama(messages);
-      } catch (Exception e) {
-        log.warn("Ollama LLM call failed, using fallback synthesis: {}", e.getMessage());
       }
-    } else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
-      try {
+      if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
         return generateOpenAi(messages);
-      } catch (Exception e) {
-        log.warn("OpenAI LLM call failed, using fallback synthesis: {}", e.getMessage());
       }
-    } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
-      try {
+      if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
         return generateGemini(messages);
-      } catch (Exception e) {
-        log.warn("Gemini call failed: {}", e.getMessage());
       }
+      throw new IllegalStateException("No valid active LLM provider configured (providerType='" + providerType + "')");
+    } catch (Exception e) {
+      log.warn("LLM provider call failed: {}", e.getMessage());
+      throw new IllegalStateException("AI backend is unavailable. Check the local AI endpoint and model.", e);
     }
-    return generateFallback(messages);
   }
 
   @Override
   public void stream(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
-    log.info("LlmProvider.stream invoked - providerType: '{}', geminiApiKeyPresent: {}, model: '{}'", providerType, !geminiApiKey.isBlank(), geminiModel);
-    if ("ollama".equalsIgnoreCase(providerType)) {
+    log.info("LlmProvider.stream invoked - providerType: '{}', model: '{}'", providerType, ollamaModel);
+    if (isLocalOrOllama()) {
       streamOllama(messages, chunkConsumer, onComplete, onError);
     } else if ("openai".equalsIgnoreCase(providerType) && !openAiApiKey.isBlank()) {
       streamOpenAi(messages, chunkConsumer, onComplete, onError);
     } else if ("gemini".equalsIgnoreCase(providerType) && !geminiApiKey.isBlank()) {
       streamGemini(messages, chunkConsumer, onComplete, onError);
     } else {
-      log.warn("No valid active LLM provider configured (providerType='{}', keyPresent={}). Executing offline fallback.", providerType, !geminiApiKey.isBlank());
-      streamFallback(messages, chunkConsumer, onComplete, onError);
+      onError.accept(new IllegalStateException(
+          "No valid active LLM provider configured (providerType='" + providerType + "')"));
     }
   }
 
@@ -138,8 +142,9 @@ public class DefaultLlmProvider implements LlmProvider {
             }
           },
           error -> {
-            log.warn("Ollama streaming error, falling back: {}", error.getMessage());
-            streamFallback(messages, chunkConsumer, onComplete, onError);
+            log.warn("Ollama streaming error: {}", error.getMessage());
+            onError.accept(new IllegalStateException(
+                "AI backend is unavailable. Check the local AI endpoint and model.", error));
           },
           onComplete::run
       );
@@ -179,8 +184,8 @@ public class DefaultLlmProvider implements LlmProvider {
               }
             },
             error -> {
-              log.warn("OpenAI streaming error, falling back: {}", error.getMessage());
-              streamFallback(messages, chunkConsumer, onComplete, onError);
+              log.warn("OpenAI streaming error: {}", error.getMessage());
+              onError.accept(new IllegalStateException("AI backend is unavailable.", error));
             },
             onComplete::run
         );
@@ -190,8 +195,7 @@ public class DefaultLlmProvider implements LlmProvider {
     Map<String, Object> body = buildGeminiRequestBody(messages);
 
     if (body == null) {
-      log.warn("Gemini request body was empty (no valid content messages). Invoking fallback.");
-      streamFallback(messages, chunkConsumer, onComplete, onError);
+      onError.accept(new IllegalStateException("Gemini request body was empty"));
       return;
     }
 
@@ -240,28 +244,17 @@ public class DefaultLlmProvider implements LlmProvider {
               }
             },
             error -> {
-              log.warn("Gemini streaming error, falling back: {}", error.getMessage());
-              streamFallback(messages, chunkConsumer, onComplete, onError);
+              log.warn("Gemini streaming error: {}", error.getMessage());
+              onError.accept(new IllegalStateException("AI backend is unavailable.", error));
             },
             () -> {
               if (!emittedAny.get()) {
-                log.warn("Gemini stream completed without producing text, invoking fallback synthesis.");
-                streamFallback(messages, chunkConsumer, onComplete, onError);
+                onError.accept(new IllegalStateException("Gemini stream completed without producing text"));
               } else {
                 onComplete.run();
               }
             }
         );
-  }
-
-  private void streamFallback(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
-    try {
-      String fullResponse = generateFallback(messages);
-      chunkConsumer.accept(fullResponse);
-      onComplete.run();
-    } catch (Exception e) {
-      onError.accept(e);
-    }
   }
 
   private String generateOllama(List<ChatMessage> messages) throws Exception {
@@ -277,7 +270,7 @@ public class DefaultLlmProvider implements LlmProvider {
         .bodyValue(body)
         .retrieve()
         .bodyToMono(String.class)
-        .block(Duration.ofSeconds(60));
+        .block(Duration.ofSeconds(120));
 
     OllamaDtos.OllamaChatResponse res = objectMapper.readValue(jsonResponse, OllamaDtos.OllamaChatResponse.class);
     log.info(res.toString());
@@ -301,7 +294,7 @@ public class DefaultLlmProvider implements LlmProvider {
         .bodyValue(body)
         .retrieve()
         .bodyToMono(String.class)
-        .block(Duration.ofSeconds(60));
+        .block(Duration.ofSeconds(120));
 
     OpenAiDtos.OpenAiChatResponse res = objectMapper.readValue(jsonResponse, OpenAiDtos.OpenAiChatResponse.class);
     if (res != null && res.choices() != null && !res.choices().isEmpty() && res.choices().get(0).message() != null) {
@@ -327,7 +320,7 @@ public class DefaultLlmProvider implements LlmProvider {
                 && (wce.getStatusCode().value() == 429 || wce.getStatusCode().value() == 503))
             .doBeforeRetry(signal -> log.info("Retrying Gemini generate after {} (attempt {})",
                 signal.failure().getMessage(), signal.totalRetries() + 1)))
-        .block(Duration.ofSeconds(60));
+        .block(Duration.ofSeconds(120));
 
     GeminiDtos.GeminiChatResponse res = objectMapper.readValue(jsonResponse, GeminiDtos.GeminiChatResponse.class);
     if (res != null && res.candidates() != null && !res.candidates().isEmpty()) {
