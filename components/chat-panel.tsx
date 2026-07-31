@@ -3,16 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
 import remarkGfm from "remark-gfm";
-import {
-  Plus,
-  Sparkles,
-  ArrowUp,
-  Square,
-  RefreshCw,
-  FileText,
-  AlertCircle,
-} from "lucide-react";
+import { Sparkles, ArrowUp, Square, FileText } from "lucide-react";
 import { Button } from "./ui/button";
+import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
 import {
   Message,
   Citation,
@@ -26,6 +19,8 @@ interface ChatPanelProps {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
   onUpdateCitations: (citations: Citation[]) => void;
+  onRequestCreateWorkspace?: () => void;
+  onRequestStartConversation?: () => void;
 }
 
 export default function ChatPanel({
@@ -33,6 +28,8 @@ export default function ChatPanel({
   conversationId,
   onConversationCreated,
   onUpdateCitations,
+  onRequestCreateWorkspace,
+  onRequestStartConversation,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -177,21 +174,37 @@ export default function ChatPanel({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-6">
-        {/* //TODO fix messages.length===0 bug when submitting a question in a workspace with no conversation selected (docs tab selected) */}
-        {messages.length === 0 ? (
+      <div
+        className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-6"
+        data-testid="chat-main"
+      >
+        {!workspaceId ? (
+          <EmptyState
+            title="No workspace selected"
+            description="Create a workspace to organize sources and start grounded chat."
+            actionLabel="Create workspace"
+            onAction={onRequestCreateWorkspace}
+            className="h-full"
+          />
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto">
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
-              <Sparkles size={32} className="text-primary" />
+              <Sparkles size={32} className="text-primary" aria-hidden />
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">
-              Ask Grounded Workspace Questions
+              Start a conversation
             </h2>
-            <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-              Upload PDF, Markdown, or Plain-text documents to your workspace.
-              Atlas will retrieve relevant chunks and generate accurate, cited
-              answers.
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              Ask grounded questions over your workspace sources, or start a
+              named conversation from the sidebar.
             </p>
+            <Button
+              type="button"
+              onClick={onRequestStartConversation}
+              className="mb-6"
+            >
+              Start conversation
+            </Button>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
               {[
                 "Summarize workspace key points",
@@ -200,6 +213,7 @@ export default function ChatPanel({
               ].map((suggestion) => (
                 <button
                   key={suggestion}
+                  type="button"
                   onClick={() => {
                     setInput(suggestion);
                   }}
@@ -262,34 +276,25 @@ export default function ChatPanel({
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-4 justify-start">
-                <div className="bg-card border border-border rounded-2xl rounded-bl-xs px-5 py-4 shadow-sm flex items-center gap-2">
-                  <RefreshCw size={16} className="text-primary animate-spin" />
-                  <span className="text-xs text-muted-foreground">
-                    Synthesizing grounded response...
-                  </span>
-                </div>
-              </div>
+              <LoadingRegion label="Synthesizing grounded response..." />
             )}
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
-      {/* Error Notification */}
-      {error && (
-        <div className="mx-6 mb-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <AlertCircle size={14} /> {error}
-          </span>
-          <button
-            onClick={() => setError(null)}
-            className="font-medium hover:underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      {error ? (
+        <ErrorBanner
+          message={error}
+          onRetry={() => {
+            setError(null);
+            if (workspaceId && conversationId) {
+              void loadConversation(workspaceId, conversationId);
+            }
+          }}
+          onDismiss={() => setError(null)}
+        />
+      ) : null}
 
       {/* Input Form Footer */}
       <div className="border-t border-border px-4 md:px-6 py-4 bg-card/60 backdrop-blur">

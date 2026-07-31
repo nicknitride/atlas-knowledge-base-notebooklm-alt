@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import {
   Menu,
   X,
   Plus,
-  Settings,
-  Search,
   MessageSquare,
   FileText,
   Trash2,
@@ -46,9 +44,20 @@ interface SidebarProps {
   onSelectTab: (tab: "chat" | "documents") => void;
   refreshTrigger: number;
   onRefresh: () => void;
+  navOpen?: boolean;
+  onNavOpenChange?: (open: boolean) => void;
+  requestCreateWorkspace?: number;
+  requestStartConversation?: number;
 }
 
 import { ModalIdName } from "./modal-id-name";
+import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
+import { filterByName } from "@/lib/list-filter";
+import {
+  AppearanceMode,
+  getAppearance,
+  setAppearance,
+} from "@/lib/appearance";
 
 export default function Sidebar({
   currentWorkspaceId,
@@ -59,16 +68,24 @@ export default function Sidebar({
   onSelectTab,
   refreshTrigger,
   onRefresh,
+  navOpen,
+  onNavOpenChange,
+  requestCreateWorkspace = 0,
+  requestStartConversation = 0,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showNewWorkspaceModal, setShowNewWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [workspaceFilter, setWorkspaceFilter] = useState("");
+  const [conversationFilter, setConversationFilter] = useState("");
+  const [appearance, setAppearanceState] = useState<AppearanceMode>("system");
 
   //Renaming Logic
   const [showRenameWorkspaceModal, setShowRenameWorkspaceModal] =
@@ -91,6 +108,34 @@ export default function Sidebar({
   const [showRenameConvoModal, setShowRenameConvoModal] = useState(false);
   const [renameConvoText, setRenameConvoText] = useState("");
 
+  useEffect(() => {
+    setAppearanceState(getAppearance());
+  }, []);
+
+  useEffect(() => {
+    if (requestCreateWorkspace > 0) {
+      setShowNewWorkspaceModal(true);
+    }
+  }, [requestCreateWorkspace]);
+
+  useEffect(() => {
+    if (requestStartConversation > 0) {
+      onSelectTab("chat");
+      setShowNewConversationModal(true);
+    }
+  }, [requestStartConversation, onSelectTab]);
+
+  useEffect(() => {
+    if (typeof navOpen === "boolean") {
+      setIsOpen(navOpen);
+    }
+  }, [navOpen]);
+
+  const setSidebarOpen = (open: boolean) => {
+    setIsOpen(open);
+    onNavOpenChange?.(open);
+  };
+
   // Load Workspaces
   useEffect(() => {
     loadWorkspaces();
@@ -100,25 +145,21 @@ export default function Sidebar({
   useEffect(() => {
     if (currentWorkspaceId) {
       loadWorkspaceData(currentWorkspaceId);
+    } else {
+      setDocuments([]);
+      setConversations([]);
     }
   }, [currentWorkspaceId, refreshTrigger]);
 
   const loadWorkspaces = async () => {
-    console.log("loadWorkspaces currentWorkspaceId =", currentWorkspaceId);
     try {
       setIsLoading(true);
+      setListError(null);
       const data = await fetchWorkspaces();
       setWorkspaces(data);
-      if (data.length > 0 && !currentWorkspaceId) {
-        onSelectWorkspace(data[0].id);
-      } else if (data.length === 0) {
-        // Auto-create default workspace if none exists
-        const defaultWs = await createWorkspace("Default Workspace");
-        setWorkspaces([defaultWs]);
-        onSelectWorkspace(defaultWs.id);
-      }
     } catch (err) {
       console.error("Failed to load workspaces", err);
+      setListError("Could not load workspaces.");
     } finally {
       setIsLoading(false);
     }
@@ -201,6 +242,8 @@ export default function Sidebar({
       setConversations((prev) => [conv, ...prev]);
       onSelectConversation(conv.id);
       onSelectTab("chat");
+      setShowNewConversationModal(false);
+      setNewConversationName("");
     } catch (err) {
       console.error(err);
     }
@@ -294,14 +337,25 @@ export default function Sidebar({
   };
 
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId);
+  const filteredWorkspaces = filterByName(workspaces, workspaceFilter);
+  const filteredConversations = filterByName(
+    conversations,
+    conversationFilter,
+    (c) => c.title,
+  );
+
+  const handleAppearanceChange = (mode: AppearanceMode) => {
+    setAppearance(mode);
+    setAppearanceState(mode);
+  };
 
   return (
     <>
       {/* Mobile Toggle Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setSidebarOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 md:hidden bg-card border border-border rounded-lg p-2 shadow-md"
-        aria-label="Toggle sidebar"
+        aria-label="Toggle navigation"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -310,23 +364,24 @@ export default function Sidebar({
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar Container */}
       <aside
+        data-testid="nav-sidebar"
         className={`fixed md:relative top-0 left-0 h-screen w-72 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 z-40 md:z-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
         {/* Header Branding */}
-        <div className="p-5 border-b border-sidebar-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-primary/90 text-primary-foreground font-bold rounded-lg flex items-center justify-center shadow">
+        <div className="p-5 border-b border-sidebar-border flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 bg-primary/90 text-primary-foreground font-bold rounded-lg flex items-center justify-center shadow shrink-0">
               A
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="font-bold text-base tracking-tight text-sidebar-foreground">
                 Atlas
               </h1>
@@ -335,14 +390,38 @@ export default function Sidebar({
               </p>
             </div>
           </div>
-          <button
-            onClick={() => loadWorkspaces()}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-            title="Refresh workspaces"
-          >
-            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => loadWorkspaces()}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+              title="Refresh workspaces"
+              aria-label="Refresh workspaces"
+            >
+              <RefreshCw
+                size={14}
+                className={isLoading ? "animate-spin" : ""}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="hidden md:inline-flex p-1.5 rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+              title="Hide navigation"
+              aria-label="Hide navigation"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
+
+        {listError ? (
+          <ErrorBanner
+            message={listError}
+            onRetry={() => void loadWorkspaces()}
+            onDismiss={() => setListError(null)}
+          />
+        ) : null}
 
         {/* Content Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -353,6 +432,7 @@ export default function Sidebar({
                 Workspaces
               </label>
               <button
+                type="button"
                 onClick={() => setShowNewWorkspaceModal(true)}
                 className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
               >
@@ -360,22 +440,62 @@ export default function Sidebar({
               </button>
             </div>
 
+            <label className="sr-only" htmlFor="workspace-filter">
+              Filter workspaces
+            </label>
+            <input
+              id="workspace-filter"
+              type="search"
+              value={workspaceFilter}
+              onChange={(e) => setWorkspaceFilter(e.target.value)}
+              placeholder="Filter workspaces…"
+              className="w-full mb-2 px-3 py-1.5 rounded-lg bg-input border border-border text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+
             <div className="space-y-1">
-              {workspaces.map((ws) => (
+              {isLoading ? <LoadingRegion label="Loading workspaces" /> : null}
+              {!isLoading && workspaces.length === 0 ? (
+                <EmptyState
+                  title="No workspaces yet"
+                  description="Create a workspace to organize your knowledge."
+                  actionLabel="Create workspace"
+                  onAction={() => setShowNewWorkspaceModal(true)}
+                />
+              ) : null}
+              {!isLoading &&
+              filteredWorkspaces.emptyReason === "no-matches" ? (
+                <EmptyState
+                  title="No matches"
+                  description="No workspaces match this filter."
+                  actionLabel="Clear filter"
+                  onAction={() => setWorkspaceFilter("")}
+                />
+              ) : null}
+              {filteredWorkspaces.items.map((ws) => (
                 <div
                   key={ws.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectWorkspace(ws.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectWorkspace(ws.id);
+                    }
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer group ${
                     currentWorkspaceId === ws.id
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                      ? "bg-sidebar-primary/15 text-sidebar-foreground ring-1 ring-sidebar-primary/40 shadow-sm"
                       : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80"
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-2 truncate min-w-0">
                     <div
-                      className={`w-2.5 h-2.5 rounded-full ${currentWorkspaceId === ws.id ? "bg-primary" : "bg-muted"}`}
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${currentWorkspaceId === ws.id ? "bg-primary" : "bg-muted"}`}
                     />
-                    <span className="truncate">{ws.name}</span>
+                    <span className="truncate" title={ws.name}>
+                      {ws.name}
+                    </span>
                   </div>
                   {workspaces.length > 1 && (
                     <>
@@ -443,41 +563,88 @@ export default function Sidebar({
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Conversations
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setShowNewConversationModal(true)}
+                  disabled={!currentWorkspaceId}
+                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium disabled:opacity-40"
+                >
+                  <Plus size={12} /> New
+                </button>
               </div>
+              <label className="sr-only" htmlFor="conversation-filter">
+                Filter conversations
+              </label>
+              <input
+                id="conversation-filter"
+                type="search"
+                value={conversationFilter}
+                onChange={(e) => setConversationFilter(e.target.value)}
+                placeholder="Filter conversations…"
+                disabled={!currentWorkspaceId}
+                className="w-full mb-2 px-3 py-1.5 rounded-lg bg-input border border-border text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              />
               <div className="space-y-1">
-                {conversations.length === 0 ? (
-                  <p className="text-xs text-muted-foreground px-2 py-1">
-                    No chats yet in this workspace.
-                  </p>
-                ) : (
-                  conversations.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => onSelectConversation(c.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer group ${
-                        currentConversationId === c.id
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
-                      }`}
+                {currentWorkspaceId && conversations.length === 0 ? (
+                  <EmptyState
+                    title="No conversations yet"
+                    description="Start a conversation to ask grounded questions."
+                    actionLabel="Start conversation"
+                    onAction={() => setShowNewConversationModal(true)}
+                  />
+                ) : null}
+                {filteredConversations.emptyReason === "no-matches" ? (
+                  <EmptyState
+                    title="No matches"
+                    description="No conversations match this filter."
+                    actionLabel="Clear filter"
+                    onAction={() => setConversationFilter("")}
+                  />
+                ) : null}
+                {filteredConversations.items.map((c) => (
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectConversation(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectConversation(c.id);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer group ${
+                      currentConversationId === c.id
+                        ? "bg-primary/15 text-primary font-medium ring-1 ring-primary/30"
+                        : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
+                    }`}
+                  >
+                    <span className="truncate flex-1" title={c.title}>
+                      {c.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteConversation(e, c.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
+                      title="Delete conversation"
+                      aria-label={`Delete ${c.title}`}
                     >
-                      <span className="truncate flex-1">{c.title}</span>
-                      <button
-                        onClick={(e) => handleDeleteConversation(e, c.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
-                        title="Delete conversation"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          setShowRenameConvoModal(true);
-                        }}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    </div>
-                  ))
-                )}
+                      <Trash2 size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenameConvoText(c.title);
+                        onSelectConversation(c.id);
+                        setShowRenameConvoModal(true);
+                      }}
+                      aria-label={`Rename ${c.title}`}
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -491,6 +658,17 @@ export default function Sidebar({
                 </label>
               </div>
 
+              {currentWorkspaceId && documents.length === 0 ? (
+                <EmptyState
+                  title="No documents yet"
+                  description="Upload a source to ground answers in this workspace."
+                  actionLabel="Upload source"
+                  onAction={() => {
+                    document.getElementById("atlas-doc-upload")?.click();
+                  }}
+                />
+              ) : null}
+
               {/* Upload Drop Area */}
               <label className="border-2 border-dashed border-sidebar-border hover:border-primary/50 rounded-lg p-3 flex flex-col items-center justify-center cursor-pointer transition-colors text-center bg-card/40">
                 <Upload size={18} className="text-muted-foreground mb-1" />
@@ -501,6 +679,7 @@ export default function Sidebar({
                   PDF, Markdown, Plain Text
                 </span>
                 <input
+                  id="atlas-doc-upload"
                   type="file"
                   multiple
                   accept=".pdf,.md,.txt,text/plain,application/pdf"
@@ -510,18 +689,17 @@ export default function Sidebar({
                 />
               </label>
 
-              {isUploading && (
-                <div className="text-xs text-primary flex items-center justify-center gap-2 p-2 bg-primary/10 rounded">
-                  <RefreshCw size={12} className="animate-spin" /> Ingesting
-                  documents...
-                </div>
-              )}
+              {isUploading ? (
+                <LoadingRegion label="Ingesting documents…" />
+              ) : null}
 
-              {uploadError && (
-                <div className="text-xs text-destructive bg-destructive/10 p-2 rounded flex items-center gap-1.5">
-                  <AlertCircle size={12} /> {uploadError}
-                </div>
-              )}
+              {uploadError ? (
+                <ErrorBanner
+                  message={uploadError}
+                  onRetry={() => setUploadError(null)}
+                  onDismiss={() => setUploadError(null)}
+                />
+              ) : null}
 
               <div className="space-y-1.5 pt-1">
                 {documents.map((doc) => (
@@ -535,7 +713,10 @@ export default function Sidebar({
                           size={14}
                           className="text-primary flex-shrink-0"
                         />
-                        <span className="text-xs font-medium text-foreground truncate">
+                        <span
+                          className="text-xs font-medium text-foreground truncate"
+                          title={doc.filename}
+                        >
                           {doc.filename}
                         </span>
                       </div>
@@ -560,13 +741,36 @@ export default function Sidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-sidebar-border space-y-2">
+        <div className="p-4 border-t border-sidebar-border space-y-3">
+          <div>
+            <label
+              htmlFor="appearance-preference"
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1.5 block"
+            >
+              Appearance
+            </label>
+            <select
+              id="appearance-preference"
+              value={appearance}
+              onChange={(e) =>
+                handleAppearanceChange(e.target.value as AppearanceMode)
+              }
+              className="w-full px-3 py-2 rounded-lg bg-input border border-border text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Appearance preference"
+            >
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
           <Button
+            type="button"
             onClick={() => {
               setShowNewConversationModal(true);
             }}
             className="w-full shadow-sm"
             size="sm"
+            disabled={!currentWorkspaceId}
           >
             <Plus size={16} /> New Conversation
           </Button>

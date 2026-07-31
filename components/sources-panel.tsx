@@ -4,49 +4,62 @@ import { useState } from "react";
 import {
   ChevronDown,
   FileText,
-  Link,
   Sparkles,
-  ExternalLink,
+  X,
 } from "lucide-react";
 import { Citation } from "@/lib/api";
+import { EmptyState } from "@/components/ui-state";
+import { Button } from "@/components/ui/button";
 
 interface SourcesPanelProps {
   citations: Citation[];
+  onClose?: () => void;
 }
 
-export default function SourcesPanel({ citations }: SourcesPanelProps) {
+export default function SourcesPanel({
+  citations,
+  onClose,
+}: SourcesPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <aside className="hidden lg:flex flex-col w-80 bg-card border-l border-border h-screen overflow-hidden">
-      {/* Panel Header */}
-      <div className="p-4 border-b border-border bg-card/40">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={16} className="text-primary" />
-          <h2 className="font-semibold text-sm text-foreground">
-            Retrieved Context & Provenance
-          </h2>
+    <aside
+      className="flex flex-col w-80 max-w-[40vw] bg-card border-l border-border h-screen overflow-hidden"
+      data-testid="sources-panel"
+      aria-label="Retrieved context and provenance"
+    >
+      <div className="p-4 border-b border-border bg-card/40 flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles size={16} className="text-primary" aria-hidden />
+            <h2 className="font-semibold text-sm text-foreground">
+              Retrieved Context & Provenance
+            </h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Source chunks used to ground response
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Source chunks used to ground response
-        </p>
+        {onClose ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Hide sources"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </Button>
+        ) : null}
       </div>
 
-      {/* Sources List */}
       <div className="flex-1 overflow-y-auto">
         {citations.length === 0 ? (
-          <div className="p-6 text-center">
-            <div className="w-12 h-12 bg-muted/50 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <FileText size={24} className="text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-foreground mb-1">
-              No Sources Cited
-            </p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Ask a question to see the retrieved document chunks and citation
-              sources.
-            </p>
-          </div>
+          <EmptyState
+            title="No sources cited yet"
+            description="Ask a question to see retrieved document chunks. This is not an error."
+            className="h-full"
+          />
         ) : (
           <div className="divide-y divide-border">
             {citations.map((citation, index) => {
@@ -59,7 +72,7 @@ export default function SourcesPanel({ citations }: SourcesPanelProps) {
                   const loc = JSON.parse(citation.sourceLocator);
                   if (loc.location) locatorText = loc.location;
                 }
-              } catch (e) {
+              } catch {
                 // Default locator text
               }
 
@@ -75,66 +88,41 @@ export default function SourcesPanel({ citations }: SourcesPanelProps) {
                         <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                           [{index + 1}]
                         </span>
-                        <h3 className="font-medium text-xs text-foreground truncate">
+                        <h3
+                          className="font-medium text-xs text-foreground truncate"
+                          title={citation.documentFilename}
+                        >
                           {citation.documentFilename}
                         </h3>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
                         <span>Chunk #{citation.ordinal}</span>
                         <span>•</span>
-                        <span className="truncate">{locatorText}</span>
+                        <span className="truncate" title={locatorText}>
+                          {locatorText}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {citation.similarity > 0 && (
-                        <div className="text-right">
-                          <p className="text-[11px] font-semibold text-emerald-500">
-                            {/* {Math.round(citation.similarity * 100)}% */}
-                            raw: {citation.similarity}
-                            <br />
-                            calc: {citation.similarity * 100}
-                            <br />
-                            round: {Math.round(citation.similarity * 100)}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground">
-                            match
-                          </p>
-                        </div>
-                      )}
-                      <ChevronDown
-                        size={14}
-                        className={`text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                      />
-                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
                   </div>
-
-                  {/* Excerpt Box */}
-                  <div className="mt-2 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-lg border border-border/40 font-mono text-[11px] leading-relaxed line-clamp-3">
-                    {citation.snippet}
-                  </div>
-
-                  {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                      <div className="text-xs text-foreground font-sans leading-relaxed bg-background p-3 rounded-lg border border-border">
-                        <p className="font-semibold text-[11px] text-primary mb-1">
-                          Full Chunk Content:
-                        </p>
-                        {citation.snippet}
-                      </div>
-                    </div>
+                  {isExpanded ? (
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-2 whitespace-pre-wrap">
+                      {citation.snippet}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {citation.snippet}
+                    </p>
                   )}
                 </div>
               );
             })}
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="p-3 border-t border-border text-[11px] text-muted-foreground bg-muted/20 text-center">
-        {citations.length > 0
-          ? `${citations.length} document sources verified`
-          : "Workspace isolated citation engine"}
       </div>
     </aside>
   );

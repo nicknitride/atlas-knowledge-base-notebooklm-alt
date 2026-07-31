@@ -2,11 +2,12 @@ node_modules
 .next
 .git
 .gitignore
+coverage
+dist
+*.log*
+.env*
+.vscode
+.idea
 
 Dockerfile
 README.md
-
-*.log
-
-.vscode
-.idea
