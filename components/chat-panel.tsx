@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Sparkles, ArrowUp, Square, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
+import { deriveChatMainMode } from "@/lib/chat-main-mode";
 import {
   Message,
   Citation,
@@ -21,6 +22,8 @@ interface ChatPanelProps {
   onUpdateCitations: (citations: Citation[]) => void;
   onRequestCreateWorkspace?: () => void;
   onRequestStartConversation?: () => void;
+  /** One-shot: bump after successful create to focus compose. */
+  focusComposeToken?: number;
 }
 
 export default function ChatPanel({
@@ -30,6 +33,7 @@ export default function ChatPanel({
   onUpdateCitations,
   onRequestCreateWorkspace,
   onRequestStartConversation,
+  focusComposeToken = 0,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -37,6 +41,14 @@ export default function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const cancelStreamRef = useRef<(() => void) | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLTextAreaElement>(null);
+  const lastFocusTokenRef = useRef(0);
+
+  const mainMode = deriveChatMainMode({
+    workspaceId,
+    conversationId,
+    messageCount: messages.length,
+  });
 
   // Scroll to bottom when messages update
   useEffect(() => {
@@ -53,6 +65,21 @@ export default function ChatPanel({
     }
   }, [workspaceId, conversationId]);
 
+  // Autofocus compose only when focusComposeToken bumps (post-create)
+  useEffect(() => {
+    if (
+      focusComposeToken > 0 &&
+      focusComposeToken !== lastFocusTokenRef.current &&
+      conversationId
+    ) {
+      lastFocusTokenRef.current = focusComposeToken;
+      const id = requestAnimationFrame(() => {
+        composeRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [focusComposeToken, conversationId]);
+
   const loadConversation = async (wsId: string, convId: string) => {
     try {
       setError(null);
@@ -64,6 +91,8 @@ export default function ChatPanel({
         .find((m) => m.role === "ASSISTANT");
       if (lastAssistantMsg?.citations) {
         onUpdateCitations(lastAssistantMsg.citations);
+      } else {
+        onUpdateCitations([]);
       }
     } catch (err) {
       console.error("Failed to load conversation details", err);
@@ -99,23 +128,14 @@ export default function ChatPanel({
       createdAt: new Date().toISOString(),
     };
 
-    const tempAssistantMsg: Message = {
-      //for future token streaming support
-      id: "temp-assistant-" + Date.now(),
-      role: "ASSISTANT",
-      content: "",
-      createdAt: new Date().toISOString(),
-    };
-
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsLoading(true);
 
-    let accumulatedContent = "";
     const cancelFn = streamChatMessage(
       workspaceId,
       activeConvId,
       userQuery,
-      (chunk) => {
+      (_chunk) => {
         //Useful for future token streaming support
       },
       (citations) => {
@@ -178,7 +198,7 @@ export default function ChatPanel({
         className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-6"
         data-testid="chat-main"
       >
-        {!workspaceId ? (
+        {mainMode === "no-workspace" ? (
           <EmptyState
             title="No workspace selected"
             description="Create a workspace to organize sources and start grounded chat."
@@ -186,7 +206,7 @@ export default function ChatPanel({
             onAction={onRequestCreateWorkspace}
             className="h-full"
           />
-        ) : messages.length === 0 ? (
+        ) : mainMode === "pre-start" ? (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto">
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
               <Sparkles size={32} className="text-primary" aria-hidden />
@@ -223,6 +243,19 @@ export default function ChatPanel({
                 </button>
               ))}
             </div>
+          </div>
+        ) : mainMode === "empty-thread" ? (
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto">
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
+              <Sparkles size={32} className="text-primary" aria-hidden />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Ready to chat
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Ask a grounded question about your workspace sources. Type below
+              to send your first message.
+            </p>
           </div>
         ) : (
           <>
@@ -301,11 +334,13 @@ export default function ChatPanel({
         <div className="max-w-4xl mx-auto flex gap-3">
           <div className="flex-1 relative">
             <textarea
+              ref={composeRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question grounded in this workspace... (Enter to send, Shift+Enter for new line)"
               rows={2}
+              aria-label="Message compose"
               className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground text-sm placeholder-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary shadow-inner"
               disabled={isLoading || !workspaceId}
             />

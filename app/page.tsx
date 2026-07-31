@@ -24,6 +24,7 @@ export default function Home() {
   const [sourcesUserCollapsed, setSourcesUserCollapsed] = useState(false);
   const [requestCreateWorkspace, setRequestCreateWorkspace] = useState(0);
   const [requestStartConversation, setRequestStartConversation] = useState(0);
+  const [focusComposeToken, setFocusComposeToken] = useState(0);
 
   const sourcesVisible = useMemo(
     () =>
@@ -97,6 +98,11 @@ export default function Home() {
           onSelectWorkspace={handleSelectWorkspace}
           currentConversationId={currentConversationId}
           onSelectConversation={handleSelectConversation}
+          onConversationCreated={(id) => {
+            setCurrentConversationId(id);
+            setFocusComposeToken((n) => n + 1);
+            handleRefresh();
+          }}
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           refreshTrigger={refreshTrigger}
@@ -123,8 +129,10 @@ export default function Home() {
         <ChatPanel
           workspaceId={currentWorkspaceId}
           conversationId={currentConversationId}
+          focusComposeToken={focusComposeToken}
           onConversationCreated={(id) => {
             setCurrentConversationId(id);
+            setFocusComposeToken((n) => n + 1);
             handleRefresh();
           }}
           onUpdateCitations={setCitations}

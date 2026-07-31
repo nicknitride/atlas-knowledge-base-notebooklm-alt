@@ -40,6 +40,8 @@ interface SidebarProps {
   onSelectWorkspace: (id: string) => void;
   currentConversationId: string | null;
   onSelectConversation: (id: string | null) => void;
+  /** Fired only after successful create (bumps compose focus in parent). */
+  onConversationCreated?: (id: string) => void;
   activeTab: "chat" | "documents";
   onSelectTab: (tab: "chat" | "documents") => void;
   refreshTrigger: number;
@@ -64,6 +66,7 @@ export default function Sidebar({
   onSelectWorkspace,
   currentConversationId,
   onSelectConversation,
+  onConversationCreated,
   activeTab,
   onSelectTab,
   refreshTrigger,
@@ -83,6 +86,10 @@ export default function Sidebar({
   const [showNewWorkspaceModal, setShowNewWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [createConversationError, setCreateConversationError] = useState<
+    string | null
+  >(null);
+  const [restoreCreateModalFocus, setRestoreCreateModalFocus] = useState(true);
   const [workspaceFilter, setWorkspaceFilter] = useState("");
   const [conversationFilter, setConversationFilter] = useState("");
   const [appearance, setAppearanceState] = useState<AppearanceMode>("system");
@@ -118,10 +125,16 @@ export default function Sidebar({
     }
   }, [requestCreateWorkspace]);
 
+  const openNewConversationModal = () => {
+    setCreateConversationError(null);
+    setRestoreCreateModalFocus(true);
+    setShowNewConversationModal(true);
+  };
+
   useEffect(() => {
     if (requestStartConversation > 0) {
       onSelectTab("chat");
-      setShowNewConversationModal(true);
+      openNewConversationModal();
     }
   }, [requestStartConversation, onSelectTab]);
 
@@ -234,18 +247,21 @@ export default function Sidebar({
   const handleNewConversation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentWorkspaceId) return;
+    const title = newConverSationName.trim();
+    if (!title) return;
+    setCreateConversationError(null);
     try {
-      const conv = await createConversation(
-        currentWorkspaceId,
-        newConverSationName,
-      );
+      const conv = await createConversation(currentWorkspaceId, title);
       setConversations((prev) => [conv, ...prev]);
       onSelectConversation(conv.id);
       onSelectTab("chat");
+      onConversationCreated?.(conv.id);
+      setRestoreCreateModalFocus(false);
       setShowNewConversationModal(false);
       setNewConversationName("");
     } catch (err) {
       console.error(err);
+      setCreateConversationError("Failed to create conversation. Please retry.");
     }
   };
   //
@@ -423,6 +439,16 @@ export default function Sidebar({
           />
         ) : null}
 
+        {createConversationError ? (
+          <ErrorBanner
+            message={createConversationError}
+            onRetry={() => {
+              openNewConversationModal();
+            }}
+            onDismiss={() => setCreateConversationError(null)}
+          />
+        ) : null}
+
         {/* Content Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Workspace Switcher */}
@@ -565,7 +591,7 @@ export default function Sidebar({
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowNewConversationModal(true)}
+                  onClick={openNewConversationModal}
                   disabled={!currentWorkspaceId}
                   className="text-xs text-primary hover:underline flex items-center gap-1 font-medium disabled:opacity-40"
                 >
@@ -590,7 +616,7 @@ export default function Sidebar({
                     title="No conversations yet"
                     description="Start a conversation to ask grounded questions."
                     actionLabel="Start conversation"
-                    onAction={() => setShowNewConversationModal(true)}
+                    onAction={openNewConversationModal}
                   />
                 ) : null}
                 {filteredConversations.emptyReason === "no-matches" ? (
@@ -765,9 +791,7 @@ export default function Sidebar({
           </div>
           <Button
             type="button"
-            onClick={() => {
-              setShowNewConversationModal(true);
-            }}
+            onClick={openNewConversationModal}
             className="w-full shadow-sm"
             size="sm"
             disabled={!currentWorkspaceId}
@@ -888,17 +912,17 @@ export default function Sidebar({
           title="Create New Conversation"
           labelPlaceHolder="e.g. Rust Documentation Questions, Tailwind Guide"
           inputLabel="Conversation Name"
+          restoreFocus={restoreCreateModalFocus}
           onCancel={() => {
             setNewConversationName("");
+            setRestoreCreateModalFocus(true);
             setShowNewConversationModal(false);
           }}
           onChange={(e) => {
             setNewConversationName(e);
           }}
           onSubmit={(e) => {
-            handleNewConversation(e);
-            setNewConversationName("");
-            setShowNewConversationModal(false);
+            void handleNewConversation(e);
           }}
         ></ModalIdName>
       }

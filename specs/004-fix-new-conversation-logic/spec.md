@@ -8,6 +8,14 @@
 
 **Input**: User description: "004-fix-new-conversation-logic (currently opening a new convo from the buttons and pressing enter doesn't direct us to the empty chat box and we're stuck seeing the 3 button page until the user clicks it himself"
 
+## Clarifications
+
+### Session 2026-08-01
+
+- Q: After a conversation is selected (including a brand-new empty one), should the three suggestion prompts still appear in the main area? → A: No — suggestion prompts only when no conversation is selected (pre-start); empty selected conversation is compose-ready without those three prompts
+- Q: Should the message input also receive keyboard focus when the user selects an existing conversation that has no messages yet (not only right after creating one)? → A: Focus compose only immediately after successfully creating a conversation
+- Q: If the user creates a new conversation while the Documents navigation view is active, should the navigation switch to the Chat view? → A: Yes — switch navigation to Chat and select the new conversation
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Land in ready-to-type chat after starting a conversation (Priority: P1)
@@ -42,6 +50,9 @@ main area again.
    **When** they view the main area, **Then** they are not shown the
    “start conversation” call-to-action page that appears when no conversation
    has been chosen yet.
+4. **Given** the Documents navigation view is active, **When** the user creates
+   a new conversation and confirms, **Then** navigation switches to Chat with
+   the new conversation selected and compose focused.
 
 ---
 
@@ -65,8 +76,9 @@ messages and confirm pre-start guidance is gone and compose is available.
    the user views the main area, **Then** they see guidance to start a
    conversation (pre-start experience may include suggestion prompts).
 2. **Given** a conversation is selected and has no messages, **When** the user
-   views the main area, **Then** the pre-start “start conversation” guidance is
-   not shown and the message input is available.
+   views the main area, **Then** the pre-start “start conversation” guidance and
+   the three suggestion prompts are not shown, and the message input is
+   available.
 
 ---
 
@@ -75,9 +87,10 @@ messages and confirm pre-start guidance is gone and compose is available.
 - Confirming the new-conversation dialog with an empty name must not create a
   conversation or change the main area (existing validation).
 - Canceling the dialog must leave the user on the prior main-area state.
-- Creating a conversation while Documents navigation view is active must still
-  land the user in ready-to-compose chat in the main area (documents stay in
-  navigation only).
+- Creating a conversation while Documents navigation view is active must switch
+  navigation to Chat, select the new conversation, and land the user in
+  ready-to-compose chat in the main area (document management remains nav-only;
+  main surface stays chat).
 - If conversation creation fails, the user stays on a recoverable error path and
   is not left in an ambiguous half-selected state.
 
@@ -86,19 +99,22 @@ messages and confirm pre-start guidance is gone and compose is available.
 ### Functional Requirements
 
 - **FR-001**: After a user successfully creates a new conversation from any
-  supported entry point, the system MUST select that conversation and present
-  the main chat compose surface without requiring an additional click on the
-  main area.
+  supported entry point, the system MUST select that conversation, switch
+  navigation to the Chat view if it was on Documents, and present the main chat
+  compose surface without requiring an additional click on the main area.
 - **FR-002**: After successful creation (including confirm via Enter in the name
   dialog), keyboard focus MUST move to the message compose field so the user can
-  type immediately.
+  type immediately. Selecting an existing empty conversation from the list MUST
+  show the empty-thread compose surface but MUST NOT require auto-focus (user
+  may click the input).
 - **FR-003**: The pre-start main experience (start-conversation call-to-action
   and the three suggestion prompts) MUST appear only when a workspace is
-  selected and no conversation is selected—not when an empty conversation is
-  already selected.
+  selected and no conversation is selected. When any conversation is selected
+  (including one with zero messages), those three suggestion prompts MUST NOT
+  appear.
 - **FR-004**: Selecting an existing conversation with no messages MUST use the
-  same empty-thread + compose experience as a newly created conversation (not
-  the pre-start CTA page).
+  same empty-thread + compose visual experience as a newly created conversation
+  (not the pre-start CTA page), without mandatory auto-focus (see FR-002).
 - **FR-005**: Failed conversation creation MUST leave the user able to dismiss
   or retry without appearing to be inside a selected empty conversation.
 - **FR-006**: Existing conversation list selection and message send behavior for
@@ -119,7 +135,8 @@ messages and confirm pre-start guidance is gone and compose is available.
 
 - **SC-001**: In 100% of scripted trials of “New/Start conversation → confirm
   (including Enter)”, the message compose field is focused within 1 second and
-  the pre-start three-suggestion page is not visible.
+  the pre-start three-suggestion page is not visible. Selecting an existing
+  empty conversation from the list need not auto-focus compose.
 - **SC-002**: Users can type and send the first message after creating a
   conversation without an extra click on the main pane in 100% of verification
   runs.
@@ -156,6 +173,5 @@ messages and confirm pre-start guidance is gone and compose is available.
   the selected conversation.
 - Creating a conversation still uses the existing name dialog; this feature does
   not remove naming.
-- Suggestion prompts may still appear as optional chips on an empty thread only
-  if they do not block compose focus; default assumption is pre-start suggestions
-  stay on the no-conversation-selected experience only.
+- Suggestion prompts appear only on the pre-start experience (no conversation
+  selected); they are not shown on a selected empty conversation.

@@ -12,6 +12,8 @@ interface ModalProps {
   labelPlaceHolder: string;
   labelValue: string;
   onChange: (value: string) => void;
+  /** When false, skip restoring focus to the trigger on close (e.g. post-create compose focus). */
+  restoreFocus?: boolean;
 }
 
 export function ModalIdName({
@@ -23,10 +25,13 @@ export function ModalIdName({
   labelValue,
   onChange,
   onCancel,
+  restoreFocus = true,
 }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef(restoreFocus);
+  restoreFocusRef.current = restoreFocus;
 
   useEffect(() => {
     if (!showModal) return;
@@ -64,7 +69,9 @@ export function ModalIdName({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      previouslyFocused.current?.focus?.();
+      if (restoreFocusRef.current) {
+        previouslyFocused.current?.focus?.();
+      }
     };
   }, [showModal, onCancel]);
 
