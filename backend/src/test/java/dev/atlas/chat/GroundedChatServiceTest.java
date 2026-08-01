@@ -57,6 +57,23 @@ class GroundedChatServiceTest {
     assertEquals("The quarterly revenue was $50M [1].", result.message().content());
     assertEquals(1, result.citations().size());
     assertEquals("doc.txt", result.citations().get(0).documentFilename());
+    assertNotNull(result.citations().get(0).documentId());
+    assertEquals("Quarterly revenue was $50M.", result.citations().get(0).snippet());
+  }
+
+  @Test
+  void providerFailureDoesNotReturnSyntheticGroundedSuccess() {
+    UUID workspaceId = UUID.randomUUID();
+    UUID conversationId = UUID.randomUUID();
+    Conversation conversation = new Conversation(workspaceId, "Test Chat");
+    when(conversationRepository.findByIdAndWorkspaceId(conversationId, workspaceId))
+        .thenReturn(Optional.of(conversation));
+    when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(retrievalService.search(any(), anyString(), anyInt(), anyDouble())).thenReturn(List.of());
+    when(llmProvider.generate(anyList())).thenThrow(new IllegalStateException("down"));
+
+    assertThrows(dev.atlas.support.ApiException.class,
+        () -> chatService.chat(workspaceId, conversationId, "What was the revenue?"));
   }
 
   @Test

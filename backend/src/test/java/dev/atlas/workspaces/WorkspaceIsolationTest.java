@@ -3,11 +3,10 @@ package dev.atlas.workspaces;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.util.Optional;
+import dev.atlas.support.ApiException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
 
 class WorkspaceIsolationTest {
   private WorkspaceRepository repository;
@@ -24,7 +23,8 @@ class WorkspaceIsolationTest {
     UUID randomId = UUID.randomUUID();
     when(repository.existsById(randomId)).thenReturn(false);
 
-    assertThrows(ResponseStatusException.class, () -> workspaceLookup.requireExists(randomId));
+    ApiException ex = assertThrows(ApiException.class, () -> workspaceLookup.requireExists(randomId));
+    assertEquals("NOT_FOUND", ex.code());
   }
 
   @Test

@@ -8,6 +8,16 @@
 
 **Input**: User description: "002-improve-backend"
 
+## Clarifications
+
+### Session 2026-08-01
+
+- Q: When a user changes the embedding model (or embedding vector size) after documents were already indexed, what should the system do for search and grounded chat? → A: Fail grounded chat/retrieval clearly until user re-indexes (or restores prior model); no silent mixed-dimension search
+- Q: When the user chats in a workspace while one or more documents are still ingesting, which passages may grounded answers use? → A: Ground only on successfully indexed documents; exclude in-progress and failed
+- Q: If the user deletes a document (or its workspace) while that document’s ingestion job is still running, what should happen to the in-flight job and any partial index data? → A: Cancel/abandon job; delete document + all partial index artifacts; no residue in retrieval
+- Q: What default maximum upload size should FR-003 enforce (unless the user overrides it in documented configuration)? → A: 80 MB default per file; expose clear progress/status outcomes so the UI can keep the user informed
+- Q: What is the minimum identity a citation must include so a user can verify a grounded answer against the source? → A: Document id/name + verbatim snippet/passage text (page/offset optional when available)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Trustworthy document ingestion (Priority: P1)
@@ -29,13 +39,14 @@ as fully indexed knowledge.
 **Acceptance Scenarios**:
 
 1. **Given** a workspace and a supported document under the configured size
-   limit, **When** the user uploads it, **Then** the system accepts the file,
-   reports progress or pending state, and eventually marks ingestion complete
-   with the document available for retrieval.
-2. **Given** a workspace and an unsupported, empty, or oversize file,
-   **When** the user uploads it, **Then** the system rejects or fails the job
-   with a user-visible reason and does not treat the file as successfully
-   indexed knowledge.
+   limit (default 80 MB), **When** the user uploads it, **Then** the system
+   accepts the file, reports progress or pending state suitable for UI
+   indicators, and eventually marks ingestion complete with the document
+   available for retrieval.
+2. **Given** a workspace and an unsupported, empty, or oversize file (above
+   the configured limit, default 80 MB), **When** the user uploads it,
+   **Then** the system rejects or fails the job with a user-visible reason and
+   does not treat the file as successfully indexed knowledge.
 3. **Given** an ingestion that fails mid-process (e.g. model or storage
    unavailable), **When** the user inspects the document or job, **Then** they
    see a failed state (not stuck “processing” indefinitely) and can retry or
@@ -43,6 +54,10 @@ as fully indexed knowledge.
 4. **Given** a document that completed ingestion, **When** the user asks a
    question whose answer is in that document, **Then** retrieval can return
    content from that document (subject to relevance).
+5. **Given** a document whose ingestion is still in progress, **When** the user
+   deletes that document (or its workspace), **Then** the job is cancelled or
+   abandoned, partial index artifacts are removed, and later retrieval does not
+   return passages from that document.
 
 ---
 
@@ -79,6 +94,10 @@ synthetic “successful” answer presented as grounded).
 4. **Given** two workspaces with different documents, **When** the user chats
    in workspace A, **Then** retrieval never returns passages that belong only
    to workspace B.
+5. **Given** a workspace with at least one successfully indexed source and
+   another document still ingesting, **When** the user asks a grounded
+   question, **Then** retrieval and citations use only successfully indexed
+   documents—not in-progress or failed ones.
 
 ---
 
@@ -144,15 +163,24 @@ complete upload → index → grounded chat for a sample document end-to-end.
 
 - Upload of an empty file, truncated/corrupt PDF, or renamed unsupported type.
 - Concurrent uploads into the same workspace.
-- Chat while ingestion for a relevant document is still running.
+- Chat while ingestion for a relevant document is still running: grounded
+  answers use only successfully indexed documents; in-progress and failed
+  documents contribute no passages or citations.
 - Chat in a workspace with zero documents or zero successfully indexed
   documents.
 - Embedding or chat model name misconfigured (model missing on the local
   backend).
 - Vector / search subsystem unavailable while chat is requested.
-- Very large valid document near the configured size limit.
-- Deleting a document or workspace while an ingestion job is in flight.
+- Very large valid document near the 80 MB default (or configured) size limit:
+  accepted if within limit; progress/status outcomes remain visible until
+  terminal success or failure.
+- Deleting a document or workspace while an ingestion job is in flight: the
+  job is cancelled or abandoned, the document and any partial chunks/vectors
+  are removed, and retrieval MUST NOT return residue for that document.
 - Provider returns an empty or malformed response.
+- Embedding model or vector size changed after documents were indexed: grounded
+  chat/retrieval fails clearly until re-index or restore of a compatible model;
+  no mixed-dimension or cross-model vector search.
 
 ## Requirements *(mandatory)*
 
@@ -166,15 +194,28 @@ complete upload → index → grounded chat for a sample document end-to-end.
   does not remain stuck without a timeout/failure path.
 - **FR-003**: System MUST reject or fail uploads that exceed the configured size
   limit, are empty, or are unsupported, without marking them as successfully
-  indexed.
+  indexed. The default maximum upload size MUST be 80 MB per file unless
+  overridden via documented configuration. Oversized rejection and in-flight
+  ingestion MUST expose clear, app-actionable status/progress (and failure
+  reason) outcomes so the UI can keep the user informed—visual chrome for those
+  indicators remains with the UI feature, but the outcomes MUST be sufficient.
 - **FR-004**: System MUST keep a single consistent embedding size and identity
-  model for stored vectors and queries so indexed content remains searchable
-  after configuration that the product documents as supported.
+  model for stored vectors and queries. When the configured embedding model or
+  vector size no longer matches vectors already stored for a workspace, the
+  system MUST fail grounded chat/retrieval with a clear, user-visible reason
+  until the user re-indexes affected documents or restores a compatible prior
+  embedding configuration. The system MUST NOT silently search or mix vectors
+  built under incompatible embedding identities.
 - **FR-005**: System MUST retrieve candidate passages only from the active
-  workspace when answering grounded questions.
+  workspace when answering grounded questions, and only from documents whose
+  ingestion has reached success. In-progress and failed documents MUST NOT
+  contribute passages or citations.
 - **FR-006**: System MUST attach citations to grounded answers that correspond
-  to real retrieved passages (document identity and location/snippet sufficient
-  for the user to verify).
+  to real retrieved passages. Each citation MUST include at minimum a document
+  id or stable document name and a verbatim snippet (or passage text) from the
+  retrieved chunk so the user can verify the answer. Page number or
+  character-offset location MAY be included when available but is not required
+  for all formats.
 - **FR-007**: System MUST NOT present synthetic offline placeholder answers or
   fabricated similarity as successful grounded results when the configured AI
   backend was required and failed, or when retrieval did not produce usable
@@ -191,6 +232,9 @@ complete upload → index → grounded chat for a sample document end-to-end.
   conversations, retrieval, and citations (no cross-workspace leakage).
 - **FR-012**: System MUST allow users to remove a failed or unwanted document
   and retry ingestion of a replacement without requiring a full workspace reset.
+  Deleting a document (or its workspace) while ingestion is in flight MUST
+  cancel or abandon the job, remove the document and any partial index
+  artifacts, and leave no retrievable residue for that document.
 - **FR-013**: Out of scope for this feature: multi-user authentication/accounts,
   sharing between users, cloud-only required features, and UI visual redesign
   (covered separately by the UI improvement feature).
@@ -200,15 +244,18 @@ complete upload → index → grounded chat for a sample document end-to-end.
 - **Workspace**: Isolation boundary for documents, conversations, and
   retrieval.
 - **Document (source)**: User-uploaded file with metadata, storage reference,
-  and ingestion outcome.
+  and ingestion outcome. Deletion while ingesting removes the source and any
+  partial index artifacts for that document.
 - **Ingestion job**: Lifecycle record for indexing a document (progress /
-  success / failure + reason).
+  success / failure + reason). May be cancelled or abandoned when the document
+  or workspace is deleted mid-flight.
 - **Chunk / passage**: Indexed unit of document text used for retrieval and
   citation.
 - **Conversation / message**: User–assistant exchange within a workspace;
   assistant messages may include citations.
 - **Citation**: Provenance link from an answer to a retrieved passage /
-  document.
+  document; minimum fields are document id or stable name plus verbatim
+  snippet/passage text (page/offset optional when available).
 - **AI provider configuration**: User-selected local (default) or optional
   remote endpoint/model settings for chat and embeddings.
 
@@ -220,16 +267,22 @@ complete upload → index → grounded chat for a sample document end-to-end.
   sample document (≤ 5 pages or equivalent) reaches “ingestion successful” and
   is usable in grounded chat within 2 minutes on typical developer hardware.
 - **SC-002**: 100% of grounded answers that include citations map each citation
-  to a real passage from the active workspace (verified in acceptance tests with
-  fixtures).
+  to a real passage from the active workspace, and each citation includes
+  document id/name plus verbatim snippet/passage text (verified in acceptance
+  tests with fixtures).
 - **SC-003**: When the configured AI backend is stopped, chat requests fail in a
   user-visible way within 15 seconds and never return a success payload that
   looks like a normal grounded answer generated from placeholder text.
 - **SC-004**: Cross-workspace retrieval tests show 0 passages leaked from other
   workspaces across a fixed fixture suite.
-- **SC-005**: Invalid uploads (empty, oversize, unsupported) produce a clear
-  failure outcome in 100% of cases in the acceptance suite—never a silent
-  “success” indexed state.
+- **SC-005**: Invalid uploads (empty, oversize including above the 80 MB
+  default unless config raised, unsupported) produce a clear failure outcome
+  in 100% of cases in the acceptance suite—never a silent “success” indexed
+  state.
+- **SC-007**: After an embedding model or vector-size change that mismatches
+  stored vectors, grounded chat/retrieval returns a clear non-success outcome
+  (not silent empty grounding) until re-index or restore of a compatible
+  configuration, verified in the acceptance suite.
 - **SC-006**: Core journeys (upload → index → grounded chat; missing resource;
   provider down) are covered by automated tests that fail if regressions are
   introduced, before implementation merges.
@@ -246,12 +299,13 @@ complete upload → index → grounded chat for a sample document end-to-end.
   Streaming time-to-first-token targets remain best-effort on local hardware and
   MAY be refined in planning.
 - **UX**: Primary paths MUST expose loading/progress (ingestion, chat pending),
-  error (failed ingest, provider down, validation), and empty (no documents /
-  no citations) states via outcomes the app can render. UI chrome changes are
-  out of scope here.
+  error (failed ingest, provider down, validation including oversize), and empty
+  (no documents / no citations) states via outcomes the app can render—especially
+  for large uploads up to the 80 MB default. UI chrome changes are out of scope
+  here but MUST have sufficient backend outcomes for indicators.
 - **Configurability**: Local AI base URL, chat model, and embedding model MUST
-  remain user-configurable; size limits MUST be documented and applied
-  consistently at the upload boundary.
+  remain user-configurable; size limits MUST default to 80 MB per file,
+  be documented, overridable, and applied consistently at the upload boundary.
 - **Simplicity**: Prefer fixing correctness of the existing ingest → retrieve →
   grounded chat pipeline over adding new services or product surfaces. New
   abstraction layers only where required to remove incorrect shared behavior
@@ -278,6 +332,17 @@ complete upload → index → grounded chat for a sample document end-to-end.
 - “Stuck processing” is defined as no terminal state within a documented
   timeout or recovery pass after dependency failure; exact timeout values may be
   set in planning as long as SC-001/SC-003 remain met.
+- Embedding-model changes do not auto-reindex; the user must re-index (or
+  restore a compatible model) before grounded retrieval works again.
+- Chat during concurrent ingestion is allowed; grounding is restricted to
+  documents that have already completed ingestion successfully.
+- In-flight ingestion cancelled by delete MUST clean up partial artifacts so
+  they cannot appear in later grounded retrieval.
+- Default upload size limit is 80 MB per file; large accepted files rely on
+  clear ingestion progress/status outcomes (for UI indicators), not silent
+  long-running jobs.
+- Citation minimum for verification is document id/name plus verbatim
+  snippet/passage text; richer location metadata is optional.
 - README and operator-facing docs may be updated as part of making
   configuration and failure modes discoverable; that is in scope as
   documentation of behavior, not as a separate product feature.

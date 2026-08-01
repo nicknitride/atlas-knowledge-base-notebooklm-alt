@@ -45,7 +45,7 @@ export default function Home() {
     }
   }, [citations.length, sourcesUserCollapsed]);
 
-  const handleSelectWorkspace = (id: string) => {
+  const handleSelectWorkspace = (id: string | null) => {
     setCurrentWorkspaceId(id);
     setCurrentConversationId(null);
     setCitations([]);

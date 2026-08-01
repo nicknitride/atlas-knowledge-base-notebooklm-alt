@@ -1,6 +1,59 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_ATLAS_API_URL || "http://localhost:8080";
 
+export interface ApiErrorBody {
+  code?: string;
+  message?: string;
+  requestId?: string;
+}
+
+export class AtlasApiError extends Error {
+  readonly code: string;
+  readonly requestId?: string;
+
+  constructor(code: string, message: string, requestId?: string) {
+    super(message || code);
+    this.name = "AtlasApiError";
+    this.code = code;
+    this.requestId = requestId;
+  }
+}
+
+export function isAtlasApiError(err: unknown): err is AtlasApiError {
+  return err instanceof AtlasApiError;
+}
+
+export async function readApiError(
+  res: Response,
+  fallback: string,
+): Promise<AtlasApiError> {
+  const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  const code = body?.code || "VALIDATION_ERROR";
+  const message = body?.message?.trim() || fallback;
+  return new AtlasApiError(code, message, body?.requestId);
+}
+
+async function throwIfNotOk(res: Response, fallback: string): Promise<void> {
+  if (!res.ok) {
+    throw await readApiError(res, fallback);
+  }
+}
+
+/** Treat 404 NOT_FOUND as success for DELETE idempotency. */
+async function assertDeleteOk(res: Response, fallback: string): Promise<void> {
+  if (res.status === 204 || res.ok) return;
+  if (res.status === 404) {
+    const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    if (!body?.code || body.code === "NOT_FOUND") return;
+    throw new AtlasApiError(
+      body.code,
+      body.message?.trim() || fallback,
+      body.requestId,
+    );
+  }
+  throw await readApiError(res, fallback);
+}
+
 export interface Workspace {
   id: string;
   name: string;
@@ -48,7 +101,7 @@ export interface ConversationDetail extends Conversation {
 
 export async function fetchWorkspaces(): Promise<Workspace[]> {
   const res = await fetch(`${API_BASE}/api/workspaces`);
-  if (!res.ok) throw new Error("Failed to fetch workspaces");
+  await throwIfNotOk(res, "Could not load workspaces.");
   return res.json();
 }
 
@@ -58,7 +111,7 @@ export async function createWorkspace(name: string): Promise<Workspace> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error("Failed to create workspace");
+  await throwIfNotOk(res, "Failed to create workspace");
   return res.json();
 }
 
@@ -71,7 +124,7 @@ export async function renameWorkspace(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error("Failed to rename workspace");
+  await throwIfNotOk(res, "Failed to rename workspace");
   return res.json();
 }
 
@@ -79,7 +132,7 @@ export async function deleteWorkspace(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/workspaces/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error("Failed to delete workspace");
+  await assertDeleteOk(res, "Failed to delete workspace");
 }
 
 export async function fetchDocuments(
@@ -88,7 +141,7 @@ export async function fetchDocuments(
   const res = await fetch(
     `${API_BASE}/api/workspaces/${workspaceId}/documents`,
   );
-  if (!res.ok) throw new Error("Failed to fetch documents");
+  await throwIfNotOk(res, "Failed to fetch documents");
   return res.json();
 }
 
@@ -105,10 +158,7 @@ export async function uploadDocument(
       body: formData,
     },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(err?.message || "Failed to upload document");
-  }
+  await throwIfNotOk(res, "Failed to upload document");
   return res.json();
 }
 
@@ -122,7 +172,7 @@ export async function deleteDocument(
       method: "DELETE",
     },
   );
-  if (!res.ok) throw new Error("Failed to delete document");
+  await assertDeleteOk(res, "Failed to delete document");
 }
 
 export async function fetchConversations(
@@ -131,7 +181,7 @@ export async function fetchConversations(
   const res = await fetch(
     `${API_BASE}/api/workspaces/${workspaceId}/conversations`,
   );
-  if (!res.ok) throw new Error("Failed to fetch conversations");
+  await throwIfNotOk(res, "Failed to fetch conversations");
   return res.json();
 }
 
@@ -147,7 +197,7 @@ export async function createConversation(
       body: JSON.stringify({ title: title || "New conversation" }),
     },
   );
-  if (!res.ok) throw new Error("Failed to create conversation");
+  await throwIfNotOk(res, "Failed to create conversation");
   return res.json();
 }
 
@@ -158,7 +208,7 @@ export async function fetchConversationDetail(
   const res = await fetch(
     `${API_BASE}/api/workspaces/${workspaceId}/conversations/${conversationId}`,
   );
-  if (!res.ok) throw new Error("Failed to fetch conversation detail");
+  await throwIfNotOk(res, "Failed to fetch conversation detail");
   return res.json();
 }
 
@@ -175,7 +225,7 @@ export async function renameConversation(
       body: JSON.stringify({ title }),
     },
   );
-  if (!res.ok) throw new Error("Failed to rename conversation");
+  await throwIfNotOk(res, "Failed to rename conversation");
   return res.json();
 }
 
@@ -189,7 +239,7 @@ export async function deleteConversation(
       method: "DELETE",
     },
   );
-  if (!res.ok) throw new Error("Failed to delete conversation");
+  await assertDeleteOk(res, "Failed to delete conversation");
 }
 
 export function streamChatMessage(
@@ -215,11 +265,16 @@ export function streamChatMessage(
   })
     .then(async (response) => {
       if (!response.ok || !response.body) {
-        throw new Error(`Failed to initiate stream (${response.status})`);
+        throw await readApiError(
+          response,
+          `Failed to initiate stream (${response.status})`,
+        );
       }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let sawError = false;
+      let sawDone = false;
 
       let currentEvent = "message";
       while (true) {
@@ -231,7 +286,6 @@ export function streamChatMessage(
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          // console.log(JSON.stringify(line))
           if (line.startsWith("event:")) {
             currentEvent = line.substring(6).trim();
           } else if (line.startsWith("data:")) {
@@ -243,17 +297,47 @@ export function streamChatMessage(
             } else if (currentEvent === "citations") {
               try {
                 const parsed = JSON.parse(data.trim());
-                console.log(parsed);
                 onCitations(parsed);
               } catch (err) {
                 console.error("Failed to parse citations", err);
               }
+            } else if (currentEvent === "error") {
+              sawError = true;
+              let parsed: ApiErrorBody | null = null;
+              try {
+                const raw = JSON.parse(data.trim());
+                parsed =
+                  typeof raw === "string"
+                    ? (JSON.parse(raw) as ApiErrorBody)
+                    : (raw as ApiErrorBody);
+              } catch {
+                parsed = null;
+              }
+              onError(
+                new AtlasApiError(
+                  parsed?.code || "PROVIDER_UNAVAILABLE",
+                  parsed?.message?.trim() || "Answer could not be completed.",
+                  parsed?.requestId,
+                ),
+              );
+              return;
             } else if (currentEvent === "done") {
+              sawDone = true;
               onComplete();
               return;
             }
           }
         }
+      }
+      if (sawError) return;
+      if (!sawDone) {
+        onError(
+          new AtlasApiError(
+            "PROVIDER_UNAVAILABLE",
+            "Answer could not be completed.",
+          ),
+        );
+        return;
       }
       onComplete();
     })
