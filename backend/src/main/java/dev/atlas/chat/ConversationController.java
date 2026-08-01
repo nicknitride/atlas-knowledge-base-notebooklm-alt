@@ -93,11 +93,15 @@ public class ConversationController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void delete(@PathVariable UUID workspaceId, @PathVariable UUID id) {
+  public void delete(@PathVariable UUID workspaceId, @PathVariable UUID id) throws IOException {
     workspaces.requireExists(workspaceId);
     Conversation conversation = conversations.findByIdAndWorkspaceId(id, workspaceId)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Conversation not found"));
-    conversations.delete(conversation);
+      if (!(conversation == null)){
+      conversations.delete(conversation);
+      }else{
+        throw new IOException("Deletion failed due to failing to retrieve conversation");
+      }
   }
 
   @PostMapping("/{id}/messages")
@@ -131,14 +135,14 @@ public class ConversationController {
         chunk -> {
           try {
             emitter.send(SseEmitter.event().name("chunk").data(chunk));
-          } catch (IOException e) {
+          } catch (IOException | IllegalStateException e) {
             emitter.completeWithError(e);
           }
         },
         citations -> {
           try {
             emitter.send(SseEmitter.event().name("citations").data(citations));
-          } catch (IOException e) {
+          } catch (IOException | IllegalStateException e) {
             emitter.completeWithError(e);
           }
         },
@@ -146,7 +150,7 @@ public class ConversationController {
           try {
             emitter.send(SseEmitter.event().name("done").data("[DONE]"));
             emitter.complete();
-          } catch (IOException e) {
+          } catch (IOException | IllegalStateException e) {
             emitter.completeWithError(e);
           }
         },
@@ -161,7 +165,7 @@ public class ConversationController {
             ApiError body = new ApiError(code, message, MDC.get("requestId"));
             emitter.send(SseEmitter.event().name("error").data(objectMapper.writeValueAsString(body)));
             emitter.complete();
-          } catch (IOException ioException) {
+          } catch (IOException | IllegalStateException ioException) {
             emitter.completeWithError(ioException);
           }
         }
