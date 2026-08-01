@@ -1,0 +1,9 @@
+dev/atlas/workspaces/WorkspaceLookup$EmbeddingIdentity.class
+dev/atlas/support/AtlasProperties$Provider.class
+dev/atlas/support/ApiException.class
+dev/atlas/support/ApiErrorHandler$1.class
+dev/atlas/support/ApiError.class
+dev/atlas/support/AtlasProperties$Ollama.class
+dev/atlas/support/AtlasProperties$Ingestion.class
+dev/atlas/support/AtlasProperties.class
+dev/atlas/support/ApiErrorHandler.class

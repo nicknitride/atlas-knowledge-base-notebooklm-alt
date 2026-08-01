@@ -1,0 +1,12 @@
+dev/atlas/providers/LocalProviderRoutingTest.class
+dev/atlas/documents/IngestionDeleteCleanupTest.class
+dev/atlas/workspaces/WorkspaceEmbeddingIdentityTest.class
+dev/atlas/documents/IngestionTimeoutTest.class
+dev/atlas/retrieval/CompleteOnlyRetrievalTest.class
+dev/atlas/providers/DefaultLlmProviderFailClosedTest.class
+dev/atlas/support/NotFoundErrorContractTest.class
+dev/atlas/documents/DocumentUploadValidationTest.class
+dev/atlas/support/ApiErrorSafetyTest.class
+dev/atlas/support/ApiErrorHandlerTest.class
+dev/atlas/chat/ProviderErrorContractTest.class
+dev/atlas/retrieval/EmbeddingMismatchTest.class
