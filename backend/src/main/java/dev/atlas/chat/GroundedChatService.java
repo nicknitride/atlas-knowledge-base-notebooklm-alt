@@ -104,6 +104,7 @@ public class GroundedChatService {
           chunk -> {
             fullAnswer.append(chunk);
             chunkConsumer.accept(chunk);
+            // log.info(chunk.toString());
           },
           () -> {
             String answerText = fullAnswer.toString().trim();
