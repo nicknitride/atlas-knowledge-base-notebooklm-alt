@@ -152,19 +152,19 @@ public class DefaultLlmProvider implements LlmProvider {
               if (chunk == null || chunk.message() == null) {
                 return;
               }
-              // String thinking = chunk.message().thinking();
+              String thinking = chunk.message().thinking();
               String content = chunk.message().content();
 
-              // if (thinking != null && !thinking.isEmpty()) {
-              // if (!state.inThinking) {
-              // state.inThinking = true;
-              // if (!state.thinkingHeaderSent) {
-              // chunkConsumer.accept("<thinking>\n");
-              // state.thinkingHeaderSent = true;
-              // }
-              // }
-              // chunkConsumer.accept(thinking);
-              // }
+              if (thinking != null && !thinking.isEmpty()) {
+                if (!state.inThinking) {
+                  state.inThinking = true;
+                  if (!state.thinkingHeaderSent) {
+                    chunkConsumer.accept("<thinking>\n");
+                    state.thinkingHeaderSent = true;
+                  }
+                }
+                chunkConsumer.accept(thinking);
+              }
 
               if (content != null && !content.isEmpty()) {
                 if (state.inThinking) {
