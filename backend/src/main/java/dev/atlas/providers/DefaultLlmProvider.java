@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import reactor.netty.http.client.HttpClient;
 
-
 //TODO: use strategy pattern
 @Service
 public class DefaultLlmProvider implements LlmProvider {
@@ -47,6 +46,9 @@ public class DefaultLlmProvider implements LlmProvider {
   @Value("${atlas.provider.ollama.model:llama3}")
   private String ollamaModel;
 
+  @Value("${atlas.provider.ollama.num-ctx:16384}")
+  private int ollamaNumCtx;
+
   @Value("${atlas.provider.openai.api-key:}")
   private String openAiApiKey;
 
@@ -61,8 +63,10 @@ public class DefaultLlmProvider implements LlmProvider {
 
   public DefaultLlmProvider(ObjectMapper objectMapper, WebClient.Builder webClientBuilder) {
     this.objectMapper = objectMapper;
-    // Connect timeout stays short so unreachable backends fail closed quickly (SC-003).
-    // Response/read timeout is longer so healthy local models can finish generation.
+    // Connect timeout stays short so unreachable backends fail closed quickly
+    // (SC-003).
+    // Response/read timeout is longer so healthy local models can finish
+    // generation.
     HttpClient httpClient = HttpClient.create()
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5_000)
         .responseTimeout(Duration.ofSeconds(120))
@@ -107,7 +111,8 @@ public class DefaultLlmProvider implements LlmProvider {
   }
 
   @Override
-  public void stream(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+  public void stream(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete,
+      Consumer<Throwable> onError) {
     log.info("LlmProvider.stream invoked - providerType: '{}', model: '{}'", providerType, ollamaModel);
     if (isLocalOrOllama()) {
       streamOllama(messages, chunkConsumer, onComplete, onError);
@@ -121,41 +126,74 @@ public class DefaultLlmProvider implements LlmProvider {
     }
   }
 
-  private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
-  Map<String, Object> body = Map.of(
-      "model", ollamaModel,
-      "stream", true,
-      "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-  );
+  private void streamOllama(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete,
+      Consumer<Throwable> onError) {
+    Map<String, Object> body = Map.of(
+        "model", ollamaModel,
+        "stream", true,
+        "options", Map.of("num_ctx", ollamaNumCtx),
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList());
 
-  webClient.post()
-      .uri(ollamaUrl + "/api/chat")
-      .contentType(MediaType.APPLICATION_JSON)
-      .accept(MediaType.APPLICATION_NDJSON, MediaType.APPLICATION_JSON)
-      .bodyValue(body)
-      .retrieve()
-      .bodyToFlux(OllamaDtos.OllamaChatResponse.class)
-      .subscribe(
-          chunk -> {
-            if (chunk != null && chunk.message() != null && chunk.message().content() != null) {
-              chunkConsumer.accept(chunk.message().content());
-            }
-          },
-          error -> {
-            log.warn("Ollama streaming error: {}", error.getMessage());
-            onError.accept(new IllegalStateException(
-                "AI backend is unavailable. Check the local AI endpoint and model.", error));
-          },
-          onComplete::run
-      );
-}
+    class StreamState {
+      boolean inThinking = false;
+      boolean thinkingHeaderSent = false;
+    }
+    final StreamState state = new StreamState();
 
-  private void streamOpenAi(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+    webClient.post()
+        .uri(ollamaUrl + "/api/chat")
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_NDJSON, MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToFlux(OllamaDtos.OllamaChatResponse.class)
+        .subscribe(
+            chunk -> {
+              if (chunk == null || chunk.message() == null) {
+                return;
+              }
+              // String thinking = chunk.message().thinking();
+              String content = chunk.message().content();
+
+              // if (thinking != null && !thinking.isEmpty()) {
+              // if (!state.inThinking) {
+              // state.inThinking = true;
+              // if (!state.thinkingHeaderSent) {
+              // chunkConsumer.accept("<thinking>\n");
+              // state.thinkingHeaderSent = true;
+              // }
+              // }
+              // chunkConsumer.accept(thinking);
+              // }
+
+              if (content != null && !content.isEmpty()) {
+                if (state.inThinking) {
+                  state.inThinking = false;
+                  chunkConsumer.accept("\n</thinking>\n\n");
+                }
+                chunkConsumer.accept(content);
+              }
+            },
+            error -> {
+              log.warn("Ollama streaming error: {}", error.getMessage());
+              onError.accept(new IllegalStateException(
+                  "AI backend is unavailable. Check the local AI endpoint and model.", error));
+            },
+            () -> {
+              if (state.inThinking) {
+                state.inThinking = false;
+                chunkConsumer.accept("\n</thinking>\n\n");
+              }
+              onComplete.run();
+            });
+  }
+
+  private void streamOpenAi(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete,
+      Consumer<Throwable> onError) {
     Map<String, Object> body = Map.of(
         "model", openAiModel,
         "stream", true,
-        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-    );
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList());
 
     webClient.post()
         .uri("https://api.openai.com/v1/chat/completions")
@@ -169,9 +207,11 @@ public class DefaultLlmProvider implements LlmProvider {
               String trimmed = line.trim();
               if (trimmed.startsWith("data: ")) {
                 String json = trimmed.substring(6).trim();
-                if ("[DONE]".equalsIgnoreCase(json)) return;
+                if ("[DONE]".equalsIgnoreCase(json))
+                  return;
                 try {
-                  OpenAiDtos.OpenAiChatResponse chunk = objectMapper.readValue(json, OpenAiDtos.OpenAiChatResponse.class);
+                  OpenAiDtos.OpenAiChatResponse chunk = objectMapper.readValue(json,
+                      OpenAiDtos.OpenAiChatResponse.class);
                   if (chunk != null && chunk.choices() != null && !chunk.choices().isEmpty()) {
                     OpenAiDtos.OpenAiDelta delta = chunk.choices().get(0).delta();
                     if (delta != null && delta.content() != null) {
@@ -187,11 +227,11 @@ public class DefaultLlmProvider implements LlmProvider {
               log.warn("OpenAI streaming error: {}", error.getMessage());
               onError.accept(new IllegalStateException("AI backend is unavailable.", error));
             },
-            onComplete::run
-        );
+            onComplete::run);
   }
 
-  private void streamGemini(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete, Consumer<Throwable> onError) {
+  private void streamGemini(List<ChatMessage> messages, Consumer<String> chunkConsumer, Runnable onComplete,
+      Consumer<Throwable> onError) {
     Map<String, Object> body = buildGeminiRequestBody(messages);
 
     if (body == null) {
@@ -199,7 +239,8 @@ public class DefaultLlmProvider implements LlmProvider {
       return;
     }
 
-    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":streamGenerateContent?key=" + geminiApiKey + "&alt=sse";
+    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel
+        + ":streamGenerateContent?key=" + geminiApiKey + "&alt=sse";
     AtomicBoolean emittedAny = new AtomicBoolean(false);
 
     webClient.post()
@@ -208,7 +249,8 @@ public class DefaultLlmProvider implements LlmProvider {
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(body)
         .retrieve()
-        .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {})
+        .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {
+        })
         .timeout(Duration.ofSeconds(45))
         .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
             .maxBackoff(Duration.ofSeconds(4))
@@ -224,7 +266,8 @@ public class DefaultLlmProvider implements LlmProvider {
                 return;
               }
               try {
-                GeminiDtos.GeminiChatResponse response = objectMapper.readValue(json, GeminiDtos.GeminiChatResponse.class);
+                GeminiDtos.GeminiChatResponse response = objectMapper.readValue(json,
+                    GeminiDtos.GeminiChatResponse.class);
                 if (response != null && response.candidates() != null && !response.candidates().isEmpty()) {
                   GeminiDtos.Candidate candidate = response.candidates().get(0);
                   if (candidate.content() != null && candidate.content().parts() != null) {
@@ -236,7 +279,8 @@ public class DefaultLlmProvider implements LlmProvider {
                     }
                   } else if (candidate.finishReason() != null && !"STOP".equalsIgnoreCase(candidate.finishReason())) {
                     emittedAny.set(true);
-                    chunkConsumer.accept("Response generated was halted by provider (" + candidate.finishReason() + ").");
+                    chunkConsumer
+                        .accept("Response generated was halted by provider (" + candidate.finishReason() + ").");
                   }
                 }
               } catch (Exception e) {
@@ -253,16 +297,15 @@ public class DefaultLlmProvider implements LlmProvider {
               } else {
                 onComplete.run();
               }
-            }
-        );
+            });
   }
 
   private String generateOllama(List<ChatMessage> messages) throws Exception {
     Map<String, Object> body = Map.of(
         "model", ollamaModel,
         "stream", false,
-        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-    );
+        "options", Map.of("num_ctx", ollamaNumCtx),
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList());
 
     String jsonResponse = webClient.post()
         .uri(ollamaUrl + "/api/chat")
@@ -274,8 +317,17 @@ public class DefaultLlmProvider implements LlmProvider {
 
     OllamaDtos.OllamaChatResponse res = objectMapper.readValue(jsonResponse, OllamaDtos.OllamaChatResponse.class);
     log.info(res.toString());
-    if (res != null && res.message() != null && res.message().content() != null) {
-      return res.message().content();
+    if (res != null && res.message() != null) {
+      String thinking = res.message().thinking();
+      String content = res.message().content();
+      StringBuilder full = new StringBuilder();
+      if (thinking != null && !thinking.isEmpty()) {
+        full.append("<thinking>\n").append(thinking).append("\n</thinking>\n\n");
+      }
+      if (content != null) {
+        full.append(content);
+      }
+      return full.toString();
     }
     log.info(jsonResponse);
     return jsonResponse;
@@ -284,8 +336,7 @@ public class DefaultLlmProvider implements LlmProvider {
   private String generateOpenAi(List<ChatMessage> messages) throws Exception {
     Map<String, Object> body = Map.of(
         "model", openAiModel,
-        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList()
-    );
+        "messages", messages.stream().map(m -> Map.of("role", m.role(), "content", m.content())).toList());
 
     String jsonResponse = webClient.post()
         .uri("https://api.openai.com/v1/chat/completions")
@@ -306,7 +357,8 @@ public class DefaultLlmProvider implements LlmProvider {
   private String generateGemini(List<ChatMessage> messages) throws Exception {
     Map<String, Object> body = buildGeminiRequestBody(messages);
 
-    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":generateContent?key=" + geminiApiKey;
+    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":generateContent?key="
+        + geminiApiKey;
     String jsonResponse = webClient.post()
         .uri(url)
         .contentType(MediaType.APPLICATION_JSON)
