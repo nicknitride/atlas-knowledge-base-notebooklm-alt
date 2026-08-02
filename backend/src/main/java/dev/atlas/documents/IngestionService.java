@@ -147,6 +147,8 @@ public class IngestionService {
         return;
       }
 
+      jdbc.update("DELETE FROM document_chunks WHERE document_id = ?", document.id());
+
       int ordinal = 0;
       for (DocumentExtractor.ExtractedSection section : sections) {
         for (String chunkText : chunk(section.content())) {
@@ -187,7 +189,7 @@ public class IngestionService {
         return;
       }
 
-      document.markComplete();
+      document.markComplete(embeddingModel, embeddingDimensions);
       documents.saveAndFlush(document);
       workspaces.stampEmbeddingIdentity(document.workspaceId(), embeddingModel, embeddingDimensions);
 

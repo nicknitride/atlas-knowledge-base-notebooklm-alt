@@ -23,8 +23,12 @@ import dev.atlas.support.ApiException;
 @RequestMapping("/api/workspaces")
 class WorkspaceController {
   private final WorkspaceRepository repository;
+  private final dev.atlas.documents.RebuildService rebuildService;
 
-  WorkspaceController(WorkspaceRepository repository) { this.repository = repository; }
+  WorkspaceController(WorkspaceRepository repository, dev.atlas.documents.RebuildService rebuildService) {
+    this.repository = repository;
+    this.rebuildService = rebuildService;
+  }
 
   @GetMapping
   List<WorkspaceResponse> list() {
@@ -48,6 +52,16 @@ class WorkspaceController {
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   void delete(@PathVariable UUID id) { repository.delete(find(id)); }
+
+  @GetMapping("/{id}/index-health")
+  dev.atlas.documents.RebuildService.IndexHealthResponse getIndexHealth(@PathVariable UUID id) {
+    return rebuildService.getIndexHealth(id);
+  }
+
+  @PostMapping("/{id}/rebuild")
+  dev.atlas.documents.RebuildService.RebuildResponse rebuild(@PathVariable UUID id) {
+    return rebuildService.rebuildWorkspace(id);
+  }
 
   private Workspace find(UUID id) {
     return repository.findById(id)
