@@ -339,6 +339,8 @@ export function streamChatMessage(
               ? line.substring(6)
               : line.substring(5);
             if (currentEvent === "chunk") {
+              // console.log("chunk from react backend: ",data);
+              console.log(JSON.stringify(data));
               onChunk(data);
             } else if (currentEvent === "citations") {
               try {

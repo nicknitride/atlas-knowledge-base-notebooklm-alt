@@ -178,7 +178,7 @@ export default function ChatPanel({
           }
           return copy;
         });
-        console.log(_chunk, isThinkingRef.current);
+        // console.log(_chunk, isThinkingRef.current);
       },
       (citations) => {
         onUpdateCitations(citations);
@@ -317,20 +317,6 @@ export default function ChatPanel({
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
-                    {thinkingText && (
-                      <div className="flex justify-start">
-                        <div className="max-w-xl lg:max-w-2xl rounded-2xl border border-border bg-muted/40 px-5 py-4">
-                          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                            <Sparkles size={14} />
-                            Thinking...
-                          </div>
-
-                          <div className="text-sm whitespace-pre-wrap text-muted-foreground">
-                            {thinkingText}
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <Streamdown
                       key={message.id + "-" + message.content}
                       parseIncompleteMarkdown
@@ -373,6 +359,20 @@ export default function ChatPanel({
             )}
             <div ref={messagesEndRef} />
           </>
+        )}
+        {thinkingText && (
+          <div className="flex justify-start">
+            <div className="max-w-xl lg:max-w-2xl rounded-2xl border border-border bg-muted/40 px-5 py-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <Sparkles size={14} />
+                Thinking...
+              </div>
+
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words font-mono">
+                {thinkingText}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
