@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, ArrowUp, Square, FileText } from "lucide-react";
+import { Sparkles, ArrowUp, Square, FileText, Church } from "lucide-react";
 import { Button } from "./ui/button";
 import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
 import { deriveChatMainMode } from "@/lib/chat-main-mode";
@@ -45,8 +45,8 @@ export default function ChatPanel({
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const lastFocusTokenRef = useRef(0);
 
-
-  const [isThinking, setIsThinking] = useState(false);
+  const isThinkingRef = useRef(false);
+  const [thinkingText, setThinkingText] = useState("");
 
   const mainMode = deriveChatMainMode({
     workspaceId,
@@ -138,7 +138,16 @@ export default function ChatPanel({
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, tempUserMsg]);
+    const tempAssistantMsg: Message = {
+      id: "streaming-assistant",
+      role: "ASSISTANT",
+      content: "",
+      createdAt: new Date().toISOString(),
+      citations: [],
+    };
+
+    setMessages((prev) => [...prev, tempUserMsg, tempAssistantMsg]);
+
     setIsLoading(true);
 
     const cancelFn = streamChatMessage(
@@ -146,11 +155,30 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (_chunk) => {
-        if(_chunk === "<thinking>"){
-          setIsThinking(true);
-        }else if (_chunk === "</thinking>"){
-          setIsThinking(false);
+        const chunk = _chunk.trim();
+        if (chunk === "<thinking>") {
+          isThinkingRef.current = true;
+          return;
+        } else if (chunk === "</thinking>") {
+          isThinkingRef.current = false;
+          setThinkingText("");
+          return;
         }
+
+        if (isThinkingRef.current) {
+          setThinkingText((prev) => prev + _chunk);
+          return;
+        }
+        setMessages((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+
+          if (last.role === "ASSISTANT") {
+            last.content += _chunk;
+          }
+          return copy;
+        });
+        console.log(_chunk, isThinkingRef.current);
       },
       (citations) => {
         onUpdateCitations(citations);
@@ -289,20 +317,27 @@ export default function ChatPanel({
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
-                    <div className="text-sm opacity-50">
-                    </div>
-                    {isThinking && <>
-                    {message.content}
-                    </>}
-                    {!isThinking && <>
-                                        <Streamdown
+                    {thinkingText && (
+                      <div className="flex justify-start">
+                        <div className="max-w-xl lg:max-w-2xl rounded-2xl border border-border bg-muted/40 px-5 py-4">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                            <Sparkles size={14} />
+                            Thinking...
+                          </div>
+
+                          <div className="text-sm whitespace-pre-wrap text-muted-foreground">
+                            {thinkingText}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Streamdown
                       key={message.id + "-" + message.content}
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
                     >
                       {message.content}
                     </Streamdown>
-                    </>}
                   </div>
 
                   {/* Render Citation Badges for Assistant */}
@@ -330,7 +365,11 @@ export default function ChatPanel({
               </div>
             ))}
             {isLoading && (
-              <LoadingRegion label="Synthesizing grounded response..." />
+              <>
+                <div>
+                  <LoadingRegion label="Synthesizing grounded response..." />
+                </div>
+              </>
             )}
             <div ref={messagesEndRef} />
           </>

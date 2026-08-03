@@ -24,7 +24,7 @@ This feature restores end-to-end correctness between the web app and the current
 backend behavior. It is a reconciliation and repair effort, not a redesign: no new
 product surface, no new backend endpoints.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Deleting a workspace actually deletes it (Priority: P1)
 
@@ -202,7 +202,7 @@ message naming the reason.
 - **Concurrent list changes**: Removing an item from a list must not resurrect items
   removed by a concurrent action.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -292,7 +292,7 @@ message naming the reason.
   correlation identifier accompanying a rejected request; drives which message the user
   sees.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -315,7 +315,7 @@ message naming the reason.
 - **SC-008**: Regression tests cover every acceptance scenario above and fail against the
   current behavior before the fix.
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: All reconciled behavior MUST work against the local stack with a local
   Ollama-compatible endpoint. Provider-unavailable messaging MUST be reachable and

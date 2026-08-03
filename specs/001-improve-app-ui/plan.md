@@ -49,17 +49,17 @@ helpers (empty state, list filter, appearance control)
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Gate | Status | Notes |
-|------|--------|--------|
-| **I. Test-First** | Pass | Vitest + RTL introduced; each user story gets failing tests before implementation in tasks |
-| **II. Local-First / Ollama** | Pass | UI-only; no cloud LLM; no CDN fonts/themes |
-| **III. Performance & UX** | Pass | Targets above; empty/loading/error specified in spec |
-| **IV. Organization & Grounded Synthesis** | Pass | Preserves workspaces, docs, chat, citations; sources panel behavior clarified |
-| **V. Privacy** | Pass | Appearance in `localStorage`; no new telemetry; gate existing Vercel Analytics when editing layout |
-| **VI. Configurability** | Pass | Appearance light/dark/system user-configurable |
-| **VII. Simplicity** | Pass | Moderate restyle of existing shell; no new service layer; client-side filter only |
+| Gate                                      | Status | Notes                                                                                              |
+| ----------------------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| **I. Test-First**                         | Pass   | Vitest + RTL introduced; each user story gets failing tests before implementation in tasks         |
+| **II. Local-First / Ollama**              | Pass   | UI-only; no cloud LLM; no CDN fonts/themes                                                         |
+| **III. Performance & UX**                 | Pass   | Targets above; empty/loading/error specified in spec                                               |
+| **IV. Organization & Grounded Synthesis** | Pass   | Preserves workspaces, docs, chat, citations; sources panel behavior clarified                      |
+| **V. Privacy**                            | Pass   | Appearance in `localStorage`; no new telemetry; gate existing Vercel Analytics when editing layout |
+| **VI. Configurability**                   | Pass   | Appearance light/dark/system user-configurable                                                     |
+| **VII. Simplicity**                       | Pass   | Moderate restyle of existing shell; no new service layer; client-side filter only                  |
 
 **Post-design re-check**: Still Pass — contracts are UI behavioral contracts only;
 data model is preference + view state; no unjustified new packages beyond test
@@ -124,5 +124,5 @@ remains untouched for this feature.
 > No constitution violations requiring justification.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| — | — | — |
+| --------- | ---------- | ------------------------------------ |
+| —         | —          | —                                    |

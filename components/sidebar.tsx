@@ -61,11 +61,7 @@ interface SidebarProps {
 import { ModalIdName } from "./modal-id-name";
 import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
 import { filterByName } from "@/lib/list-filter";
-import {
-  AppearanceMode,
-  getAppearance,
-  setAppearance,
-} from "@/lib/appearance";
+import { AppearanceMode, getAppearance, setAppearance } from "@/lib/appearance";
 
 export default function Sidebar({
   currentWorkspaceId,
@@ -132,7 +128,9 @@ export default function Sidebar({
   const [renameConvoText, setRenameConvoText] = useState("");
 
   // Index Health
-  const [indexHealth, setIndexHealth] = useState<IndexHealthResponse | null>(null);
+  const [indexHealth, setIndexHealth] = useState<IndexHealthResponse | null>(
+    null,
+  );
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
 
   useEffect(() => {
@@ -232,9 +230,7 @@ export default function Sidebar({
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      setWorkspaceMutationError(
-        messageForApiError(err, "create workspace"),
-      );
+      setWorkspaceMutationError(messageForApiError(err, "create workspace"));
     }
   };
 
@@ -259,9 +255,7 @@ export default function Sidebar({
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      setWorkspaceMutationError(
-        messageForApiError(err, "rename workspace"),
-      );
+      setWorkspaceMutationError(messageForApiError(err, "rename workspace"));
     }
   };
 
@@ -552,8 +546,7 @@ export default function Sidebar({
                   onAction={() => setShowNewWorkspaceModal(true)}
                 />
               ) : null}
-              {!isLoading &&
-              filteredWorkspaces.emptyReason === "no-matches" ? (
+              {!isLoading && filteredWorkspaces.emptyReason === "no-matches" ? (
                 <EmptyState
                   title="No matches"
                   description="No workspaces match this filter."
@@ -849,23 +842,32 @@ export default function Sidebar({
                   </div>
                   <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
                     <div className="rounded-lg bg-emerald-500/10 py-1.5">
-                      <div className="font-semibold text-emerald-400">{indexHealth.readyDocuments}</div>
+                      <div className="font-semibold text-emerald-400">
+                        {indexHealth.readyDocuments}
+                      </div>
                       <div className="text-muted-foreground">Ready</div>
                     </div>
                     <div className="rounded-lg bg-amber-500/10 py-1.5">
-                      <div className="font-semibold text-amber-400">{indexHealth.staleDocuments}</div>
+                      <div className="font-semibold text-amber-400">
+                        {indexHealth.staleDocuments}
+                      </div>
                       <div className="text-muted-foreground">Stale</div>
                     </div>
                     <div className="rounded-lg bg-blue-500/10 py-1.5">
-                      <div className="font-semibold text-blue-400">{indexHealth.pendingDocuments}</div>
+                      <div className="font-semibold text-blue-400">
+                        {indexHealth.pendingDocuments}
+                      </div>
                       <div className="text-muted-foreground">Pending</div>
                     </div>
                     <div className="rounded-lg bg-red-500/10 py-1.5">
-                      <div className="font-semibold text-red-400">{indexHealth.failedDocuments}</div>
+                      <div className="font-semibold text-red-400">
+                        {indexHealth.failedDocuments}
+                      </div>
                       <div className="text-muted-foreground">Failed</div>
                     </div>
                   </div>
-                  {(indexHealth.status === "STALE" || indexHealth.status === "FAILED") && (
+                  {(indexHealth.status === "STALE" ||
+                    indexHealth.status === "FAILED") && (
                     <button
                       id="sidebar-rebuild-index-btn"
                       onClick={() => setShowRebuildDialog(true)}
@@ -1012,11 +1014,7 @@ export default function Sidebar({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isDeletingWorkspace}
-                >
+                <Button type="submit" size="sm" disabled={isDeletingWorkspace}>
                   {isDeletingWorkspace ? "Deleting…" : "Confirm"}
                 </Button>
               </div>

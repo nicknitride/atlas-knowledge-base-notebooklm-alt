@@ -64,9 +64,9 @@ describe("api error message mapping", () => {
   });
 
   it("maps network/unknown errors to reachability copy", () => {
-    expect(messageForApiError(new TypeError("Failed to fetch"), "delete")).toMatch(
-      /reach|network|backend|Atlas/i,
-    );
+    expect(
+      messageForApiError(new TypeError("Failed to fetch"), "delete"),
+    ).toMatch(/reach|network|backend|Atlas/i);
   });
 
   it("maps NOT_FOUND for non-delete actions", () => {

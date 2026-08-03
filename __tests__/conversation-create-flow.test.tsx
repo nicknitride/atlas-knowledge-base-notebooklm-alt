@@ -60,9 +60,7 @@ describe("conversation create flow", () => {
     expect(
       screen.queryByRole("button", { name: "Start conversation" }),
     ).toBeNull();
-    expect(
-      screen.queryByText(/Summarize workspace key points/i),
-    ).toBeNull();
+    expect(screen.queryByText(/Summarize workspace key points/i)).toBeNull();
     expect(
       screen.getByPlaceholderText(/Ask a question grounded/i),
     ).not.toBeDisabled();
@@ -97,9 +95,7 @@ describe("conversation create flow", () => {
       expect(fetchConversations).toHaveBeenCalled();
     });
 
-    await user.click(
-      screen.getByRole("button", { name: /New Conversation/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /New Conversation/i }));
     await user.type(
       screen.getByPlaceholderText(/Rust Documentation/i),
       "My chat",
@@ -143,9 +139,7 @@ describe("conversation create flow", () => {
       expect(fetchDocuments).toHaveBeenCalled();
     });
 
-    await user.click(
-      screen.getByRole("button", { name: /New Conversation/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /New Conversation/i }));
     await user.type(
       screen.getByPlaceholderText(/Rust Documentation/i),
       "From docs",
@@ -182,23 +176,17 @@ describe("conversation create flow", () => {
       expect(fetchConversations).toHaveBeenCalled();
     });
 
-    await user.click(
-      screen.getByRole("button", { name: /New Conversation/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /New Conversation/i }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onSelectConversation).not.toHaveBeenCalled();
     expect(onConversationCreated).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("button", { name: /New Conversation/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /New Conversation/i }));
     expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     vi.mocked(createConversation).mockRejectedValueOnce(new Error("fail"));
-    await user.click(
-      screen.getByRole("button", { name: /New Conversation/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /New Conversation/i }));
     await user.type(
       screen.getByPlaceholderText(/Rust Documentation/i),
       "Will fail",

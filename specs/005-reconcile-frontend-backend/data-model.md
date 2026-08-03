@@ -9,16 +9,17 @@ persistence schema. Field names match JSON from the backend (camelCase).
 
 ### Workspace
 
-| Field | Type | Notes |
-|-------|------|--------|
-| id | string (UUID) | Stable identity |
-| name | string | Display; max 120 on create/rename |
-| createdAt | string (ISO-8601) | |
+| Field     | Type              | Notes                             |
+| --------- | ----------------- | --------------------------------- |
+| id        | string (UUID)     | Stable identity                   |
+| name      | string            | Display; max 120 on create/rename |
+| createdAt | string (ISO-8601) |                                   |
 
 **Relationships**: Owns documents and conversations (cascade delete on
 backend).
 
 **Client rules**:
+
 - Delete confirmation retains `id` + `name` until success or cancel.
 - After delete of selected workspace → select another or empty state.
 - After delete of non-selected → selection unchanged.
@@ -26,65 +27,65 @@ backend).
 
 ### DocumentItem
 
-| Field | Type | Notes |
-|-------|------|--------|
-| id | string (UUID) | |
-| filename | string | |
-| contentType | string | |
-| status | enum | `PENDING` \| `PROCESSING` \| `COMPLETE` \| `FAILED` |
-| failureReason | string? | Shown when `FAILED` |
-| createdAt | string (ISO-8601) | |
+| Field         | Type              | Notes                                               |
+| ------------- | ----------------- | --------------------------------------------------- |
+| id            | string (UUID)     |                                                     |
+| filename      | string            |                                                     |
+| contentType   | string            |                                                     |
+| status        | enum              | `PENDING` \| `PROCESSING` \| `COMPLETE` \| `FAILED` |
+| failureReason | string?           | Shown when `FAILED`                                 |
+| createdAt     | string (ISO-8601) |                                                     |
 
 **UI status mapping**:
 
 | API status | User label | Grounding eligible |
-|------------|------------|--------------------|
-| PENDING | Queued | No |
-| PROCESSING | Processing | No |
-| COMPLETE | Ready | Yes |
-| FAILED | Failed | No |
+| ---------- | ---------- | ------------------ |
+| PENDING    | Queued     | No                 |
+| PROCESSING | Processing | No                 |
+| COMPLETE   | Ready      | Yes                |
+| FAILED     | Failed     | No                 |
 
 **Client rules**: Rejected uploads never enter the list. Poll until all
 non-terminal or timeout (existing 2 min).
 
 ### Conversation
 
-| Field | Type | Notes |
-|-------|------|--------|
-| id | string (UUID) | |
-| workspaceId | string (UUID) | |
-| title | string | |
-| createdAt / updatedAt | string (ISO-8601) | |
+| Field                 | Type              | Notes |
+| --------------------- | ----------------- | ----- |
+| id                    | string (UUID)     |       |
+| workspaceId           | string (UUID)     |       |
+| title                 | string            |       |
+| createdAt / updatedAt | string (ISO-8601) |       |
 
 ### Message
 
-| Field | Type | Notes |
-|-------|------|--------|
-| id | string (UUID) | |
-| role | `USER` \| `ASSISTANT` | Client type may still allow `SYSTEM` historically; API does not emit it — do not invent SYSTEM messages |
-| content | string | |
-| createdAt | string (ISO-8601) | |
-| citations | Citation[]? | Required for presenting answer as grounded |
+| Field     | Type                  | Notes                                                                                                   |
+| --------- | --------------------- | ------------------------------------------------------------------------------------------------------- |
+| id        | string (UUID)         |                                                                                                         |
+| role      | `USER` \| `ASSISTANT` | Client type may still allow `SYSTEM` historically; API does not emit it — do not invent SYSTEM messages |
+| content   | string                |                                                                                                         |
+| createdAt | string (ISO-8601)     |                                                                                                         |
+| citations | Citation[]?           | Required for presenting answer as grounded                                                              |
 
 ### Citation
 
-| Field | Type | Notes |
-|-------|------|--------|
-| chunkId | string (UUID) | |
-| documentId | string (UUID) | |
-| documentFilename | string | |
-| ordinal | number | |
-| sourceLocator | string | |
-| snippet | string | |
-| similarity | number | |
+| Field            | Type          | Notes |
+| ---------------- | ------------- | ----- |
+| chunkId          | string (UUID) |       |
+| documentId       | string (UUID) |       |
+| documentFilename | string        |       |
+| ordinal          | number        |       |
+| sourceLocator    | string        |       |
+| snippet          | string        |       |
+| similarity       | number        |       |
 
 ### ApiFailure (client)
 
-| Field | Type | Notes |
-|-------|------|--------|
-| code | string | UPPER_SNAKE from API when present |
-| message | string | User-safe |
-| requestId | string? | Correlation; optional display |
+| Field     | Type    | Notes                             |
+| --------- | ------- | --------------------------------- |
+| code      | string  | UPPER_SNAKE from API when present |
+| message   | string  | User-safe                         |
+| requestId | string? | Correlation; optional display     |
 
 Not persisted; attached to thrown errors from `lib/api.ts`.
 
@@ -119,12 +120,12 @@ Not persisted; attached to thrown errors from `lib/api.ts`.
 
 ## Validation (client)
 
-| Action | Rule |
-|--------|------|
-| Create/rename workspace | Non-blank name; respect backend max length |
-| Create conversation | Non-blank title (existing) |
-| Delete confirm | Must have non-empty retained id/name |
-| Upload | Backend validates type/size; surface returned codes |
+| Action                  | Rule                                                |
+| ----------------------- | --------------------------------------------------- |
+| Create/rename workspace | Non-blank name; respect backend max length          |
+| Create conversation     | Non-blank title (existing)                          |
+| Delete confirm          | Must have non-empty retained id/name                |
+| Upload                  | Backend validates type/size; surface returned codes |
 
 ## Integrity
 

@@ -20,13 +20,13 @@ This feature eliminates non-semantic stand-in / placeholder vectors and fake sim
 **Project Type**: Web application (Java REST backend + Next.js frontend)  
 **Performance Goals**: Short document indexing <= 2 min; small workspace rebuild (<= 5 documents) <= 5 min on standard local hardware  
 **Constraints**: Local-first with Ollama embeddings; strict privacy (no content exfiltration); explicit error envelopes for failures  
-**Scale/Scope**: Self-hosted knowledge workspace  
+**Scale/Scope**: Self-hosted knowledge workspace
 
 ---
 
 ## Constitution Check
 
-*GATE: Passed before Phase 0 research. Re-evaluated post-design.*
+_GATE: Passed before Phase 0 research. Re-evaluated post-design._
 
 Verify against `.specify/memory/constitution.md` (Atlas v1.0.0+):
 
@@ -103,6 +103,6 @@ lib/
 
 ## Complexity Tracking
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| *None* | Rebuild workflow and document health status use existing storage and API patterns. | N/A |
+| Violation | Why Needed                                                                         | Simpler Alternative Rejected Because |
+| --------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
+| _None_    | Rebuild workflow and document health status use existing storage and API patterns. | N/A                                  |

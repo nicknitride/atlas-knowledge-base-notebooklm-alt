@@ -132,12 +132,15 @@ description: "Task list for 006-fix-rebuild-duplicate-chunk"
 ### Implementation for User Story 3
 
 - [x] T015 [US3] In `backend/src/main/java/dev/atlas/documents/RebuildService.java`, add a private field:
+
   ```java
   private final ConcurrentHashMap<UUID, ReentrantLock> workspaceRebuildLocks = new ConcurrentHashMap<>();
   ```
+
   Add imports: `java.util.concurrent.ConcurrentHashMap`, `java.util.concurrent.locks.ReentrantLock`
 
 - [x] T016 [US3] In `backend/src/main/java/dev/atlas/documents/RebuildService.java`, wrap the body of `rebuildWorkspace(UUID workspaceId)` with a `tryLock` guard:
+
   ```java
   ReentrantLock lock = workspaceRebuildLocks.computeIfAbsent(workspaceId, id -> new ReentrantLock());
   if (!lock.tryLock()) {
@@ -150,6 +153,7 @@ description: "Task list for 006-fix-rebuild-duplicate-chunk"
       lock.unlock();
   }
   ```
+
   Place the guard immediately after `workspaceLookup.requireExists(workspaceId)`.
 
 - [x] T017 [US3] Run the US3 tests: `cd backend && ./mvnw test -Dtest="RebuildConcurrencyTest"` — confirm both tests pass
@@ -259,4 +263,3 @@ T001 → T002 → T003 → T004
 - The `DELETE` added in T007 is already present on the failure path (`failDocument()`); it's only missing on the success path — a one-line addition
 - Chunk-level concurrency (two rebuild jobs for different workspaces) is already safe; the lock in T015–T016 is keyed by `workspaceId`
 - Commit after T009 (US1 complete) as the minimum shippable fix
-

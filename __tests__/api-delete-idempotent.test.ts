@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  deleteConversation,
-  deleteDocument,
-  deleteWorkspace,
-} from "@/lib/api";
+import { deleteConversation, deleteDocument, deleteWorkspace } from "@/lib/api";
 
 function jsonResponse(status: number, body?: unknown): Response {
   if (body === undefined) {

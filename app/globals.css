@@ -81,7 +81,8 @@
   --sidebar-accent-foreground: #1c1b19;
   --sidebar-border: #e3ddd2;
   --sidebar-ring: #0b5cab;
-  --font-sans: "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --space-region: 1rem;
   --space-tight: 0.5rem;
 }

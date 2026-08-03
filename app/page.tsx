@@ -146,10 +146,7 @@ export default function Home() {
       </div>
 
       {sourcesVisible ? (
-        <SourcesPanel
-          citations={citations}
-          onClose={toggleSources}
-        />
+        <SourcesPanel citations={citations} onClose={toggleSources} />
       ) : null}
     </div>
   );

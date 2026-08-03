@@ -1,7 +1,7 @@
 # Phase 1 Data Model: Vector Embeddings & Index Rebuilding
 
 **Feature**: `003-improve-vector-embeddings`  
-**Date**: 2026-08-02  
+**Date**: 2026-08-02
 
 ## Entity Definitions
 
@@ -9,10 +9,10 @@
 
 Represents the vector space contract under which document chunks were embedded.
 
-| Field | Type | Description | Validation / Constraints |
-|-------|------|-------------|---------------------------|
-| `model` | String | Identifier of embedding model | Non-blank (e.g. `nomic-embed-text`, `mxbai-embed-large`) |
-| `dimensions` | Integer | Length of output vector | Must match active database column vector size (768d default) |
+| Field        | Type    | Description                   | Validation / Constraints                                     |
+| ------------ | ------- | ----------------------------- | ------------------------------------------------------------ |
+| `model`      | String  | Identifier of embedding model | Non-blank (e.g. `nomic-embed-text`, `mxbai-embed-large`)     |
+| `dimensions` | Integer | Length of output vector       | Must match active database column vector size (768d default) |
 
 ---
 
@@ -20,14 +20,14 @@ Represents the vector space contract under which document chunks were embedded.
 
 Represents a knowledge workspace containing source documents and vector indexes.
 
-| Column / Attribute | Database Type | Description | Validation / Rules |
-|-------------------|---------------|-------------|--------------------|
-| `id` | UUID | Unique workspace identifier | Primary Key |
-| `name` | VARCHAR(255) | User-visible workspace name | Non-blank |
-| `embedding_model` | VARCHAR(120) | Active embedding model stamped at last complete indexing | Nullable until first ingest completes |
-| `embedding_dimensions` | INTEGER | Vector dimensions stamped at last complete indexing | Nullable until first ingest completes |
-| `created_at` | TIMESTAMP WITH TIME ZONE | Creation timestamp | Auto-set |
-| `updated_at` | TIMESTAMP WITH TIME ZONE | Last modification timestamp | Auto-set |
+| Column / Attribute     | Database Type            | Description                                              | Validation / Rules                    |
+| ---------------------- | ------------------------ | -------------------------------------------------------- | ------------------------------------- |
+| `id`                   | UUID                     | Unique workspace identifier                              | Primary Key                           |
+| `name`                 | VARCHAR(255)             | User-visible workspace name                              | Non-blank                             |
+| `embedding_model`      | VARCHAR(120)             | Active embedding model stamped at last complete indexing | Nullable until first ingest completes |
+| `embedding_dimensions` | INTEGER                  | Vector dimensions stamped at last complete indexing      | Nullable until first ingest completes |
+| `created_at`           | TIMESTAMP WITH TIME ZONE | Creation timestamp                                       | Auto-set                              |
+| `updated_at`           | TIMESTAMP WITH TIME ZONE | Last modification timestamp                              | Auto-set                              |
 
 ---
 
@@ -35,19 +35,19 @@ Represents a knowledge workspace containing source documents and vector indexes.
 
 Source document uploaded by user and indexed into chunks.
 
-| Column / Attribute | Database Type | Description | Validation / Rules |
-|-------------------|---------------|-------------|--------------------|
-| `id` | UUID | Unique document identifier | Primary Key |
-| `workspace_id` | UUID | Foreign Key to Workspace | Required, CASCADE delete |
-| `filename` | VARCHAR(255) | Stored file key in file storage | Required |
-| `original_filename` | VARCHAR(255) | Display filename | Required |
-| `mime_type` | VARCHAR(100) | Content MIME type | Supported types: PDF, MD, TXT |
-| `file_size_bytes` | BIGINT | Size of file | Must be > 0 |
-| `ingestion_status` | VARCHAR(50) | Status: `PENDING`, `PROCESSING`, `COMPLETE`, `FAILED` | Required |
-| `embedding_model` | VARCHAR(120) | Model used for current chunks of this document | Nullable; populated upon indexing completion |
-| `embedding_dimensions` | INTEGER | Dimensions used for current chunks of this document | Nullable; populated upon indexing completion |
-| `error_message` | TEXT | Ingestion or embedding error details | Nullable |
-| `created_at` | TIMESTAMP WITH TIME ZONE | Upload timestamp | Auto-set |
+| Column / Attribute     | Database Type            | Description                                           | Validation / Rules                           |
+| ---------------------- | ------------------------ | ----------------------------------------------------- | -------------------------------------------- |
+| `id`                   | UUID                     | Unique document identifier                            | Primary Key                                  |
+| `workspace_id`         | UUID                     | Foreign Key to Workspace                              | Required, CASCADE delete                     |
+| `filename`             | VARCHAR(255)             | Stored file key in file storage                       | Required                                     |
+| `original_filename`    | VARCHAR(255)             | Display filename                                      | Required                                     |
+| `mime_type`            | VARCHAR(100)             | Content MIME type                                     | Supported types: PDF, MD, TXT                |
+| `file_size_bytes`      | BIGINT                   | Size of file                                          | Must be > 0                                  |
+| `ingestion_status`     | VARCHAR(50)              | Status: `PENDING`, `PROCESSING`, `COMPLETE`, `FAILED` | Required                                     |
+| `embedding_model`      | VARCHAR(120)             | Model used for current chunks of this document        | Nullable; populated upon indexing completion |
+| `embedding_dimensions` | INTEGER                  | Dimensions used for current chunks of this document   | Nullable; populated upon indexing completion |
+| `error_message`        | TEXT                     | Ingestion or embedding error details                  | Nullable                                     |
+| `created_at`           | TIMESTAMP WITH TIME ZONE | Upload timestamp                                      | Auto-set                                     |
 
 #### Derived State: `health_status`
 
@@ -70,14 +70,14 @@ else if (ingestion_status == 'COMPLETE') {
 
 Passage chunk extracted from source document with pgvector embedding.
 
-| Column / Attribute | Database Type | Description | Validation / Rules |
-|-------------------|---------------|-------------|--------------------|
-| `id` | UUID | Unique chunk identifier | Primary Key |
-| `document_id` | UUID | Foreign Key to Document | Required, CASCADE delete |
-| `ordinal` | INTEGER | Index of chunk within document | 0-indexed |
-| `content` | TEXT | Passage text content | Non-empty |
-| `source_locator` | JSONB | Location metadata (page, line range) | JSON object |
-| `embedding` | VECTOR(768) | Float vector embeddings from Ollama | Length must match active vector dimension contract |
+| Column / Attribute | Database Type | Description                          | Validation / Rules                                 |
+| ------------------ | ------------- | ------------------------------------ | -------------------------------------------------- |
+| `id`               | UUID          | Unique chunk identifier              | Primary Key                                        |
+| `document_id`      | UUID          | Foreign Key to Document              | Required, CASCADE delete                           |
+| `ordinal`          | INTEGER       | Index of chunk within document       | 0-indexed                                          |
+| `content`          | TEXT          | Passage text content                 | Non-empty                                          |
+| `source_locator`   | JSONB         | Location metadata (page, line range) | JSON object                                        |
+| `embedding`        | VECTOR(768)   | Float vector embeddings from Ollama  | Length must match active vector dimension contract |
 
 ---
 

@@ -103,13 +103,17 @@ describe("mutation errors (US2)", () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getByText("notes.md")).toBeInTheDocument());
-
-    const deleteBtns = screen.getAllByRole("button").filter((b) =>
-      b.querySelector("svg"),
+    await waitFor(() =>
+      expect(screen.getByText("notes.md")).toBeInTheDocument(),
     );
+
+    const deleteBtns = screen
+      .getAllByRole("button")
+      .filter((b) => b.querySelector("svg"));
     // Click trash on document row — use title if present; otherwise last hover trash
-    const docRow = screen.getByText("notes.md").closest("div.group") ?? screen.getByText("notes.md").parentElement?.parentElement;
+    const docRow =
+      screen.getByText("notes.md").closest("div.group") ??
+      screen.getByText("notes.md").parentElement?.parentElement;
     const trash = docRow?.querySelector("button");
     expect(trash).toBeTruthy();
     await user.click(trash!);

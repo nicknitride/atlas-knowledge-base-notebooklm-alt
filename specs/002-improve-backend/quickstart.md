@@ -52,11 +52,11 @@ cd backend && ./mvnw test
 
 ## Scenario B — Invalid uploads (SC-005)
 
-| Input | Expect |
-|-------|--------|
-| Empty file | `400` + `UPLOAD_EMPTY` (or equivalent); not COMPLETE |
-| File > 80 MB (default) | `400` + `UPLOAD_TOO_LARGE` |
-| Unsupported type (e.g. `.exe` renamed) | `400` + `UPLOAD_UNSUPPORTED_TYPE` |
+| Input                                  | Expect                                               |
+| -------------------------------------- | ---------------------------------------------------- |
+| Empty file                             | `400` + `UPLOAD_EMPTY` (or equivalent); not COMPLETE |
+| File > 80 MB (default)                 | `400` + `UPLOAD_TOO_LARGE`                           |
+| Unsupported type (e.g. `.exe` renamed) | `400` + `UPLOAD_UNSUPPORTED_TYPE`                    |
 
 ## Scenario C — Provider down (SC-003)
 

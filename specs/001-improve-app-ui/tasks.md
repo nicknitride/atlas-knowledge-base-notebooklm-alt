@@ -41,18 +41,18 @@ precede implementation for each behavior (including shared helpers).
 
 ### ui-state helpers (TDD)
 
-- [x] T004 Write failing tests for empty/loading/error presentational helpers in __tests__/ui-state.test.tsx per contracts/ui-shell.md
-- [x] T005 Implement shared empty/loading/error helpers in components/ui-state.tsx to pass __tests__/ui-state.test.tsx
+- [x] T004 Write failing tests for empty/loading/error presentational helpers in **tests**/ui-state.test.tsx per contracts/ui-shell.md
+- [x] T005 Implement shared empty/loading/error helpers in components/ui-state.tsx to pass **tests**/ui-state.test.tsx
 
 ### list-filter (TDD)
 
-- [x] T006 [P] Write failing unit tests for case-insensitive match/clear/no-matches in __tests__/list-filter.test.ts
-- [x] T007 Implement list filter pure helper in lib/list-filter.ts to pass __tests__/list-filter.test.ts
+- [x] T006 [P] Write failing unit tests for case-insensitive match/clear/no-matches in **tests**/list-filter.test.ts
+- [x] T007 Implement list filter pure helper in lib/list-filter.ts to pass **tests**/list-filter.test.ts
 
 ### appearance (TDD)
 
-- [x] T008 [P] Write failing unit tests for get/set/apply and invalid→system fallback in __tests__/appearance.test.ts
-- [x] T009 Implement appearance preference module (key `atlas.appearance`) in lib/appearance.ts to pass __tests__/appearance.test.ts
+- [x] T008 [P] Write failing unit tests for get/set/apply and invalid→system fallback in **tests**/appearance.test.ts
+- [x] T009 Implement appearance preference module (key `atlas.appearance`) in lib/appearance.ts to pass **tests**/appearance.test.ts
 
 ### shell chrome (non-story wiring)
 
@@ -71,9 +71,9 @@ precede implementation for each behavior (including shared helpers).
 
 ### Tests for User Story 1 (REQUIRED — write first, ensure FAIL) ⚠️
 
-- [x] T012 [P] [US1] Failing component/contract tests for no-workspace, no-conversations, no-documents empty CTAs in __tests__/empty-states.test.tsx
-- [x] T013 [P] [US1] Failing tests for sources visibility formula (auto-hide, forced open calm empty) in __tests__/panel-visibility.test.tsx per contracts/ui-shell.md
-- [x] T014 [P] [US1] Failing ChatPanel empty primary-action test in __tests__/chat-empty.test.tsx
+- [x] T012 [P] [US1] Failing component/contract tests for no-workspace, no-conversations, no-documents empty CTAs in **tests**/empty-states.test.tsx
+- [x] T013 [P] [US1] Failing tests for sources visibility formula (auto-hide, forced open calm empty) in **tests**/panel-visibility.test.tsx per contracts/ui-shell.md
+- [x] T014 [P] [US1] Failing ChatPanel empty primary-action test in **tests**/chat-empty.test.tsx
 
 ### Implementation for User Story 1
 
@@ -95,9 +95,9 @@ precede implementation for each behavior (including shared helpers).
 
 ### Tests for User Story 2 (REQUIRED — write first, ensure FAIL) ⚠️
 
-- [x] T020 [P] [US2] Failing component test that documents tab does not replace chat main surface in __tests__/documents-nav.test.tsx
-- [x] T021 [P] [US2] Failing tests for workspace/conversation filter UI no-matches and clear in __tests__/sidebar-filter.test.tsx
-- [x] T022 [P] [US2] Failing tests for nav collapse/restore control accessibility in __tests__/nav-collapse.test.tsx
+- [x] T020 [P] [US2] Failing component test that documents tab does not replace chat main surface in **tests**/documents-nav.test.tsx
+- [x] T021 [P] [US2] Failing tests for workspace/conversation filter UI no-matches and clear in **tests**/sidebar-filter.test.tsx
+- [x] T022 [P] [US2] Failing tests for nav collapse/restore control accessibility in **tests**/nav-collapse.test.tsx
 
 ### Implementation for User Story 2
 
@@ -121,9 +121,9 @@ precede implementation for each behavior (including shared helpers).
 
 ### Tests for User Story 3 (REQUIRED — write first, ensure FAIL) ⚠️
 
-- [x] T030 [P] [US3] Failing component tests: loading indicator within 200ms (fake timers) and recoverable error UI in __tests__/async-feedback.test.tsx (SC-003)
-- [x] T031 [P] [US3] Failing keyboard/focus smoke tests for filter, panel toggles, appearance control in __tests__/keyboard-focus.test.tsx
-- [x] T032 [P] [US3] Failing test that appearance control persists mode across reload simulation in __tests__/appearance-control.test.tsx
+- [x] T030 [P] [US3] Failing component tests: loading indicator within 200ms (fake timers) and recoverable error UI in **tests**/async-feedback.test.tsx (SC-003)
+- [x] T031 [P] [US3] Failing keyboard/focus smoke tests for filter, panel toggles, appearance control in **tests**/keyboard-focus.test.tsx
+- [x] T032 [P] [US3] Failing test that appearance control persists mode across reload simulation in **tests**/appearance-control.test.tsx
 
 ### Implementation for User Story 3
 
@@ -142,7 +142,7 @@ precede implementation for each behavior (including shared helpers).
 
 **Purpose**: Validation against plan targets and constitution
 
-- [x] T039 [P] Run and fix full unit suite via `pnpm test` until green; update failing tests under __tests__/ as needed
+- [x] T039 [P] Run and fix full unit suite via `pnpm test` until green; update failing tests under **tests**/ as needed
 - [x] T040 Execute manual scenarios in specs/001-improve-app-ui/quickstart.md (1280×800 SC-006, panel toggles, privacy no-analytics, SC-003 stopwatch if needed)
 - [x] T041 YAGNI/KISS/DRY pass: remove unused abstractions; confirm no new CDN/cloud UI deps in package.json and app/layout.tsx
 - [x] T042 [P] Regression smoke checklist: workspace CRUD entry points, document upload entry, conversation list, chat compose, citations/sources still reachable in components/sidebar.tsx, components/chat-panel.tsx, components/sources-panel.tsx (FR-010)

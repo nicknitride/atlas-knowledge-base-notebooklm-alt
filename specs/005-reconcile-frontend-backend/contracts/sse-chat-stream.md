@@ -14,12 +14,12 @@
 
 ## Events the client MUST handle
 
-| event | data | Client action |
-|-------|------|----------------|
-| `chunk` | plain text | `onChunk` (may be no-op for UI for now) |
-| `citations` | JSON array of Citation | `onCitations` |
-| `done` | e.g. `[DONE]` | `onComplete` once; stop reading |
-| `error` | JSON `ApiError` object **or** JSON string of that object | `onError`; **MUST NOT** call `onComplete` |
+| event       | data                                                     | Client action                             |
+| ----------- | -------------------------------------------------------- | ----------------------------------------- |
+| `chunk`     | plain text                                               | `onChunk` (may be no-op for UI for now)   |
+| `citations` | JSON array of Citation                                   | `onCitations`                             |
+| `done`      | e.g. `[DONE]`                                            | `onComplete` once; stop reading           |
+| `error`     | JSON `ApiError` object **or** JSON string of that object | `onError`; **MUST NOT** call `onComplete` |
 
 ## Failure rules
 

@@ -72,9 +72,7 @@ describe("ChatPanel empty primary action", () => {
     expect(
       screen.queryByRole("button", { name: "Start conversation" }),
     ).toBeNull();
-    expect(
-      screen.queryByText(/Summarize workspace key points/i),
-    ).toBeNull();
+    expect(screen.queryByText(/Summarize workspace key points/i)).toBeNull();
     expect(
       screen.getByRole("textbox", { name: "Message compose" }),
     ).not.toBeDisabled();

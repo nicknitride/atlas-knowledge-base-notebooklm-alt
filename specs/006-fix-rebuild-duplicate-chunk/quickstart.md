@@ -28,6 +28,7 @@ curl -s -X POST http://localhost:8080/api/workspaces/{WORKSPACE_ID}/rebuild | jq
 ```
 
 **Expected outcome for step 3**:
+
 ```json
 {
   "status": "COMPLETED",
@@ -86,4 +87,3 @@ docker logs atlas_knowledge_base-api-1 2>&1 | grep -i "duplicate\|constraint\|ro
 ```
 
 **Expected**: Zero matches for a successful rebuild.
-

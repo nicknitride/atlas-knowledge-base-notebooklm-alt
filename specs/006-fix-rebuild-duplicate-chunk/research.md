@@ -12,10 +12,12 @@
 **Rationale**: `IngestionService.executeJob()` (lines 150–178) inserts chunks starting at `ordinal = 0` without removing any existing chunks first. On a rebuild, `document_chunks` already contains rows for the document, so the first `INSERT` at `ordinal = 0` violates `UNIQUE(document_id, ordinal)`. PostgreSQL aborts the transaction; every subsequent statement in the same connection (including the `DELETE` inside `failDocument()`) fails with "current transaction is aborted".
 
 **Evidence**:
+
 - `executeJob()` line 171: raw `jdbc.update("INSERT INTO document_chunks ...")` — no preceding delete
 - `failDocument()` line 209: `jdbc.update("DELETE FROM document_chunks WHERE document_id = ?")` — cleanup exists **only** on the failure path, not the success path
 
 **Alternatives considered**:
+
 - Upsert (`INSERT ... ON CONFLICT DO UPDATE`): Valid, but more complex SQL and changes semantics. Deferred unless delete-then-insert proves insufficient.
 - Schema change (remove unique constraint): Rejected — the constraint is correct and necessary for retrieval integrity.
 
@@ -30,6 +32,7 @@
 **Fix**: Move per-document chunk clearing and ingestion so each document runs in its own `REQUIRES_NEW` sub-transaction, or (simpler) keep `rebuildWorkspace` non-transactional at the outer level and rely solely on per-document transactions in `executeJob`.
 
 **Alternatives considered**:
+
 - Propagation `REQUIRES_NEW` on `executeJob`: Achieves isolation but requires a Spring proxy boundary (self-invocation pitfall). The method is already called via a Spring proxy, so this is safe.
 - Wrapping each document loop iteration in a try-catch and savepoint: More complex, PostgreSQL-specific; rejected in favour of standard Spring transaction semantics.
 
@@ -42,6 +45,7 @@
 **Rationale**: `WorkspaceController.rebuild()` is synchronous and blocking. Two simultaneous HTTP requests can both enter `rebuildWorkspace`, both read the document list, and both create `IngestionJob` rows and call `executeJob` for the same documents at the same time. Even with a correct delete-before-insert, concurrent jobs produce duplicate inserts.
 
 **Alternatives considered**:
+
 - PostgreSQL advisory locks: Correct, but adds DB round-trip and requires careful lock release. Deferred unless in-process guard proves insufficient for the single-node deployment.
 - Database-level SERIALIZABLE isolation: Too broad; hurts all reads.
 - `synchronized(workspaceId.toString().intern())`: Fragile string interning. Rejected.
@@ -65,7 +69,7 @@
 **Rationale**: All existing tests use plain Mockito (no Spring context, no Testcontainers) for unit coverage. Idempotency (delete-before-insert) can be verified by asserting that `jdbc.update("DELETE FROM ...")` is called with the document ID before any `INSERT` call. Concurrency can be verified with a thread pool test in `RebuildServiceTest`.
 
 **Test files to add / modify**:
+
 1. `IngestionWorkflowTest` — add test: `executeJobDeletesExistingChunksBeforeInserting`
 2. New `RebuildIdempotencyTest` — verify second rebuild of same workspace succeeds
 3. New `RebuildConcurrencyTest` — verify second concurrent rebuild receives 409 or is blocked
-

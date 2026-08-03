@@ -13,6 +13,7 @@ tokens) without a full visual-identity redesign. Tokens already exist for light
 and `.dark`; extending them is the smallest change.
 
 **Alternatives considered**:
+
 - New design system package — rejected (YAGNI, FR complexity).
 - Pixel-perfect redesign of every control — rejected (out of scope).
 
@@ -27,6 +28,7 @@ module + control in sidebar/settings area.
 round-trip; constitution VI + privacy (local only).
 
 **Alternatives considered**:
+
 - Cookie/server preference — rejected (unnecessary for single-user local app).
 - CSS-only `prefers-color-scheme` without user override — rejected (FR-008).
 
@@ -50,6 +52,7 @@ independent (FR-012).
 auto-hide sources with zero citations. Single boolean formula avoids drift.
 
 **Alternatives considered**:
+
 - Always three columns — rejected (clarification B).
 - CSS-only media queries without toggles — rejected (must restore explicitly).
 - `sourcesOpen && (citations || forced)` only — rejected (cannot express
@@ -75,20 +78,23 @@ typing comfort; perceived “as you type” is enough.
 **Rationale**: Spec FR-015; YAGNI vs full search index.
 
 **Alternatives considered**:
+
 - Server-side search — rejected (no backend change; overkill).
 - Document filter — out of scope per assumptions.
 
 ## R6 — Test stack (constitution I)
 
 **Decision**: Add Vitest + `@testing-library/react` + `@testing-library/user-event`
-+ `jsdom`. Colocate or place under `__tests__/`. Scripts: `pnpm test`. No
-Playwright required for this feature’s first delivery; keyboard paths covered
-with `user-event` where practical + quickstart manual pass for SC-006.
+
+- `jsdom`. Colocate or place under `__tests__/`. Scripts: `pnpm test`. No
+  Playwright required for this feature’s first delivery; keyboard paths covered
+  with `user-event` where practical + quickstart manual pass for SC-006.
 
 **Rationale**: Repo has no test runner today; TDD is non-negotiable. Vitest fits
 Next/React without heavy E2E infra.
 
 **Alternatives considered**:
+
 - Jest — heavier migration vs Vitest for Vite-era tooling.
 - Playwright-only — slower feedback for empty-state unit work.
 

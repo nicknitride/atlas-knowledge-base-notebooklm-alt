@@ -1,7 +1,7 @@
 # Error Envelope Contracts: Honest Embedding Failures
 
 **Feature**: `003-improve-vector-embeddings`  
-**Date**: 2026-08-02  
+**Date**: 2026-08-02
 
 ## Overview
 

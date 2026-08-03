@@ -10,9 +10,11 @@ export function filterByName<T>(
   source: T[],
   query: string,
   getLabel: (item: T) => string = (item) =>
-    String((item as { name?: string; title?: string }).name ??
-      (item as { title?: string }).title ??
-      ""),
+    String(
+      (item as { name?: string; title?: string }).name ??
+        (item as { title?: string }).title ??
+        "",
+    ),
 ): FilterByNameResult<T> {
   const trimmed = query.trim();
   if (source.length === 0 && trimmed.length === 0) {

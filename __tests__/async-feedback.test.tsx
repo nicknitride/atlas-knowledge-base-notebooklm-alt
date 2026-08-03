@@ -12,7 +12,9 @@ describe("async feedback (SC-003)", () => {
 
   it("shows loading indicator within 200ms of action start", () => {
     let show = false;
-    const { rerender } = render(show ? <LoadingRegion label="Loading" /> : null);
+    const { rerender } = render(
+      show ? <LoadingRegion label="Loading" /> : null,
+    );
     const started = performance.now();
     act(() => {
       show = true;
@@ -26,7 +28,11 @@ describe("async feedback (SC-003)", () => {
   it("shows recoverable error UI", () => {
     const onRetry = vi.fn();
     render(
-      <ErrorBanner message="Failed to load" onRetry={onRetry} onDismiss={() => undefined} />,
+      <ErrorBanner
+        message="Failed to load"
+        onRetry={onRetry}
+        onDismiss={() => undefined}
+      />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Failed to load");
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();

@@ -32,13 +32,13 @@ POST /api/workspaces/{id}/rebuild
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | string | `COMPLETED` if all documents rebuilt; `PARTIAL_FAILURE` if some failed; `FAILED` if all failed |
-| `totalProcessed` | int | Number of documents attempted |
-| `rebuiltCount` | int | Successful rebuilds |
-| `failedCount` | int | Failed rebuilds |
-| `errors` | array | One entry per failed document |
+| Field            | Type   | Description                                                                                    |
+| ---------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `status`         | string | `COMPLETED` if all documents rebuilt; `PARTIAL_FAILURE` if some failed; `FAILED` if all failed |
+| `totalProcessed` | int    | Number of documents attempted                                                                  |
+| `rebuiltCount`   | int    | Successful rebuilds                                                                            |
+| `failedCount`    | int    | Failed rebuilds                                                                                |
+| `errors`         | array  | One entry per failed document                                                                  |
 
 ---
 
@@ -70,10 +70,9 @@ This response code and error body are **new** — previously the second request 
 
 ## Behaviour Changes vs. Current Implementation
 
-| Behaviour | Before Fix | After Fix |
-|-----------|-----------|-----------|
-| Rebuild on already-indexed workspace | 500 DuplicateKeyException | 200 COMPLETED |
-| Concurrent rebuild of same workspace | 500 / data corruption | 409 REBUILD_IN_PROGRESS |
-| Per-document failure isolation | Entire rebuild fails | Only that document fails; others continue |
-| Transaction scope per document | Outer `@Transactional` wraps all docs | Each document runs in its own transaction |
-
+| Behaviour                            | Before Fix                            | After Fix                                 |
+| ------------------------------------ | ------------------------------------- | ----------------------------------------- |
+| Rebuild on already-indexed workspace | 500 DuplicateKeyException             | 200 COMPLETED                             |
+| Concurrent rebuild of same workspace | 500 / data corruption                 | 409 REBUILD_IN_PROGRESS                   |
+| Per-document failure isolation       | Entire rebuild fails                  | Only that document fails; others continue |
+| Transaction scope per document       | Outer `@Transactional` wraps all docs | Each document runs in its own transaction |

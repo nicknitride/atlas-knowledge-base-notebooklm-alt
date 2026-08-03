@@ -1,11 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import Sidebar from "@/components/sidebar";
-import {
-  fetchConversations,
-  fetchDocuments,
-  fetchWorkspaces,
-} from "@/lib/api";
+import { fetchConversations, fetchDocuments, fetchWorkspaces } from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();

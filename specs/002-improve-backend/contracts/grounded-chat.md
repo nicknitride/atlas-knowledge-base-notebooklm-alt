@@ -36,13 +36,13 @@ If the configured LLM or embedding backend is unreachable / misconfigured:
 
 Each citation in message responses MUST include at minimum:
 
-| Field | Required |
-|-------|----------|
-| documentId | yes |
-| documentFilename | yes (when known) |
-| snippet | yes (verbatim passage text) |
-| sourceLocator / ordinal | optional |
-| similarity | optional; if present MUST be real retrieval score |
+| Field                   | Required                                          |
+| ----------------------- | ------------------------------------------------- |
+| documentId              | yes                                               |
+| documentFilename        | yes (when known)                                  |
+| snippet                 | yes (verbatim passage text)                       |
+| sourceLocator / ordinal | optional                                          |
+| similarity              | optional; if present MUST be real retrieval score |
 
 100% of citations must map to real active-workspace passages (SC-002).
 
@@ -56,10 +56,10 @@ When retrieval returns no usable chunks:
 
 ## Endpoints (existing)
 
-| Method | Path | Notes |
-|--------|------|--------|
-| POST | `.../conversations/{id}/messages` | Sync chat + citations |
-| POST | `.../conversations/{id}/messages/stream` (or existing SSE path) | Stream; same fail-closed rules |
+| Method | Path                                                            | Notes                          |
+| ------ | --------------------------------------------------------------- | ------------------------------ |
+| POST   | `.../conversations/{id}/messages`                               | Sync chat + citations          |
+| POST   | `.../conversations/{id}/messages/stream` (or existing SSE path) | Stream; same fail-closed rules |
 
 Exact stream path follows current `ConversationController`; behavior contract
 above applies regardless of transport.

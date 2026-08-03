@@ -11,6 +11,7 @@
 During workspace rebuild, `IngestionService.executeJob()` inserts new `document_chunks` rows starting at `ordinal = 0` without first deleting the existing chunks for that document. On a second rebuild, the first `INSERT` violates the `UNIQUE(document_id, ordinal)` constraint. PostgreSQL aborts the transaction, causing all subsequent statements — including the failure-path `DELETE` — to fail with "current transaction is aborted", ultimately surfacing as `UnexpectedRollbackException`.
 
 The fix has three parts:
+
 1. **Delete before insert**: Add `DELETE FROM document_chunks WHERE document_id = ?` at the start of the success path in `executeJob()`, inside the same transaction as the inserts.
 2. **Transaction isolation**: Remove `@Transactional` from `RebuildService.rebuildWorkspace()` so each document's ingestion runs in its own independent transaction (the existing `@Transactional` on `executeJob()` is sufficient).
 3. **Concurrency guard**: Add an in-process `ConcurrentHashMap<UUID, ReentrantLock>` in `RebuildService` to prevent two concurrent rebuilds for the same workspace; return HTTP 409 if a rebuild is already in progress.
@@ -41,7 +42,7 @@ The fix has three parts:
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify against `.specify/memory/constitution.md` (Atlas v1.0.0+):
 
@@ -94,12 +95,13 @@ backend/src/test/java/dev/atlas/documents/
 See [research.md](./research.md) — all NEEDS CLARIFICATION resolved.
 
 **Key decisions**:
-| Decision | Chosen Approach | Rationale |
-|----------|----------------|-----------|
-| Fix strategy | Delete-then-insert | Simplest correct fix within existing schema |
-| Transaction scope | Remove outer `@Transactional` from `rebuildWorkspace` | Prevents single-doc failure from aborting entire rebuild |
-| Concurrency guard | In-process `ConcurrentHashMap<UUID, ReentrantLock>` | Sufficient for single-JVM deployment; no DB round-trip |
-| Upsert (`ON CONFLICT`) | Deferred | Not needed once delete-then-insert is in place |
+
+| Decision               | Chosen Approach                                       | Rationale                                                |
+| ---------------------- | ----------------------------------------------------- | -------------------------------------------------------- |
+| Fix strategy           | Delete-then-insert                                    | Simplest correct fix within existing schema              |
+| Transaction scope      | Remove outer `@Transactional` from `rebuildWorkspace` | Prevents single-doc failure from aborting entire rebuild |
+| Concurrency guard      | In-process `ConcurrentHashMap<UUID, ReentrantLock>`   | Sufficient for single-JVM deployment; no DB round-trip   |
+| Upsert (`ON CONFLICT`) | Deferred                                              | Not needed once delete-then-insert is in place           |
 
 ---
 
@@ -126,6 +128,7 @@ Three end-to-end validation scenarios: idempotent rebuild, concurrent rebuild gu
 **File**: `backend/src/main/java/dev/atlas/documents/IngestionService.java`
 
 **Current code** (line 150):
+
 ```java
 int ordinal = 0;
 for (DocumentExtractor.ExtractedSection section : sections) {
@@ -136,6 +139,7 @@ for (DocumentExtractor.ExtractedSection section : sections) {
 ```
 
 **After fix** — insert the DELETE immediately before the ordinal counter:
+
 ```java
 jdbc.update("DELETE FROM document_chunks WHERE document_id = ?", document.id());
 int ordinal = 0;
@@ -161,11 +165,13 @@ This single `DELETE` executes within the `@Transactional` of `executeJob()`, ato
 **File**: `backend/src/main/java/dev/atlas/documents/RebuildService.java`
 
 Add a field:
+
 ```java
 private final ConcurrentHashMap<UUID, ReentrantLock> workspaceRebuildLocks = new ConcurrentHashMap<>();
 ```
 
 In `rebuildWorkspace(UUID workspaceId)`:
+
 ```java
 ReentrantLock lock = workspaceRebuildLocks.computeIfAbsent(workspaceId, id -> new ReentrantLock());
 if (!lock.tryLock()) {
@@ -182,6 +188,7 @@ try {
 ### 4. Tests — Three test additions
 
 #### `IngestionWorkflowTest` — new test (added to existing file)
+
 ```
 executeJobDeletesExistingChunksBeforeInserting:
   Given a document with existing chunks (simulated by the fact that DELETE should be called)
@@ -191,6 +198,7 @@ executeJobDeletesExistingChunksBeforeInserting:
 ```
 
 #### `RebuildIdempotencyTest` — new file
+
 ```
 rebuildTwiceSucceedsBothTimes:
   Given documentRepository returns one document
@@ -200,6 +208,7 @@ rebuildTwiceSucceedsBothTimes:
 ```
 
 #### `RebuildConcurrencyTest` — new file
+
 ```
 concurrentRebuildReturnConflict:
   Given rebuildWorkspace is running on a background thread (lock held)
@@ -211,5 +220,4 @@ concurrentRebuildReturnConflict:
 
 ## Complexity Tracking
 
-*No constitution violations — no entries required.*
-
+_No constitution violations — no entries required._

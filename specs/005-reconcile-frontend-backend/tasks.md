@@ -187,12 +187,12 @@ FAILED shows reason; upload 4xx → banner and list unchanged
 
 ### User Story Dependencies
 
-| Story | Depends on | Notes |
-|-------|------------|--------|
-| US1 (P1) | Phase 2 | Delete idempotent helpers + ErrorBanner |
-| US2 (P2) | Phase 2 | Message map; can parallel US3 after foundation |
-| US3 (P2) | Phase 2 | Stream tests/impl in `lib/api.ts` + chat-panel |
-| US4 (P3) | Phase 2 | Prefer after US2 upload error path (T021) |
+| Story    | Depends on | Notes                                          |
+| -------- | ---------- | ---------------------------------------------- |
+| US1 (P1) | Phase 2    | Delete idempotent helpers + ErrorBanner        |
+| US2 (P2) | Phase 2    | Message map; can parallel US3 after foundation |
+| US3 (P2) | Phase 2    | Stream tests/impl in `lib/api.ts` + chat-panel |
+| US4 (P3) | Phase 2    | Prefer after US2 upload error path (T021)      |
 
 ### Within Each User Story
 

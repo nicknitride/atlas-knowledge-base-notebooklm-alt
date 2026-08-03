@@ -18,7 +18,7 @@
 - Q: When the user switches to the documents-oriented view, what should happen to the main work surface? → A: Documents stay in navigation; main work surface remains chat
 - Q: For long workspace or conversation lists, what findability is required in this feature? → A: Simple in-panel filter/search for workspaces and conversations is required
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Clear first-run and empty workspace experience (Priority: P1)
 
@@ -138,7 +138,7 @@ architecture.
   restore it via an explicit toggle (required behavior).
 - How are overlapping modals/dialogs prevented from trapping focus?
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -203,7 +203,7 @@ architecture.
 - **Appearance preference**: User choice of light, dark, or system; stored
   locally for that user/machine.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -227,7 +227,7 @@ architecture.
   send-message flows without horizontal scrolling of the page chrome, using
   panel toggles if navigation or sources are collapsed.
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: Feature MUST work with a local stack and Ollama (or compatible
   local endpoint) without requiring a cloud model provider. UI assets and

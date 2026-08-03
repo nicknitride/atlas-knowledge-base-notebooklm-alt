@@ -10,7 +10,7 @@
 
 ---
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 — Rebuild Completes Without Error (Priority: P1)
 
@@ -67,7 +67,7 @@ The system prevents two rebuild jobs from simultaneously processing the same doc
 
 ---
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -87,7 +87,7 @@ The system prevents two rebuild jobs from simultaneously processing the same doc
 
 ---
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -99,7 +99,7 @@ The system prevents two rebuild jobs from simultaneously processing the same doc
 
 ---
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: The fix MUST operate entirely within the local stack (local database, local job execution) with no dependency on cloud services.
 - **Privacy**: No document content is transmitted outside the local environment as a result of this fix.

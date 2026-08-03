@@ -1,7 +1,7 @@
 # REST API Contract: Workspace Index Health & Rebuild
 
 **Feature**: `003-improve-vector-embeddings`  
-**Date**: 2026-08-02  
+**Date**: 2026-08-02
 
 ---
 
@@ -14,14 +14,14 @@ Retrieves the workspace-level and document-level embedding health status relativ
 
 ### Headers
 
-| Header | Value | Description |
-|--------|-------|-------------|
+| Header   | Value              | Description     |
+| -------- | ------------------ | --------------- |
 | `Accept` | `application/json` | Required format |
 
 ### Path Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter     | Type   | Description            |
+| ------------- | ------ | ---------------------- |
 | `workspaceId` | `UUID` | ID of target workspace |
 
 ### Response 200 OK
@@ -104,8 +104,8 @@ Re-indexes all existing documents in the workspace using the current active embe
 
 ### Headers
 
-| Header | Value | Description |
-|--------|-------|-------------|
+| Header         | Value              | Description                |
+| -------------- | ------------------ | -------------------------- |
 | `Content-Type` | `application/json` | Optional payload parameter |
 
 ### Response 200 OK (Rebuild Completed)

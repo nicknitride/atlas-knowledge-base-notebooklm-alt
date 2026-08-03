@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { IndexHealthBadge } from "./index-health-badge";
-import type {
-  IndexHealthResponse,
-  RebuildResponse,
-} from "@/lib/api";
+import type { IndexHealthResponse, RebuildResponse } from "@/lib/api";
 import { rebuildWorkspaceIndex } from "@/lib/api";
 
 interface RebuildIndexDialogProps {
@@ -128,7 +125,9 @@ export function RebuildIndexDialog({
             {result.errors.length > 0 && (
               <ul className="mt-2 list-disc pl-4 text-xs text-amber-400/80">
                 {result.errors.map((e) => (
-                  <li key={e.documentId}>{e.filename}: {e.errorMessage}</li>
+                  <li key={e.documentId}>
+                    {e.filename}: {e.errorMessage}
+                  </li>
                 ))}
               </ul>
             )}

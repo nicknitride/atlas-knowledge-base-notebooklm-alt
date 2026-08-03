@@ -64,7 +64,7 @@ describe("streamChatMessage SSE error events (US3)", () => {
     const onError = vi.fn();
 
     vi.mocked(fetch).mockResolvedValue(
-      new Response(sseBody(['event: chunk\ndata: hi\n\n']), {
+      new Response(sseBody(["event: chunk\ndata: hi\n\n"]), {
         status: 200,
         headers: { "Content-Type": "text/event-stream" },
       }),

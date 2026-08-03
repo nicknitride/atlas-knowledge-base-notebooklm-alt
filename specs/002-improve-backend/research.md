@@ -16,6 +16,7 @@ NOT be returned as successful grounded chat when a real provider was required.
 citation trust.
 
 **Alternatives considered**:
+
 - Keep fallback only for `ATLAS_PROVIDER_TYPE=local` without Ollama — rejected;
   constitution requires Ollama-native local path; “local” should mean local
   Ollama endpoint, not hash embeddings.
@@ -33,6 +34,7 @@ Document that cloud types remain opt-in via `openai` / `gemini` + keys.
 `ATLAS_PROVIDER_TYPE=local` and sets `ATLAS_OLLAMA_URL`.
 
 **Alternatives considered**:
+
 - Require renaming default to `ollama` only — acceptable alias, but keep
   `local` working for existing `.env` / compose.
 
@@ -50,6 +52,7 @@ Spring multipart (inconsistent). Large files need status polling, not silent
 jobs (FR-002/FR-003).
 
 **Alternatives considered**:
+
 - 25 MB keep — rejected by clarification.
 - Multipart-only enforcement — rejected; need consistent app message + tests.
 
@@ -64,6 +67,7 @@ exist; empty retrieval → honest no-evidence behavior (no fake citations).
 `workspace_id` and `embedding IS NOT NULL`.
 
 **Alternatives considered**:
+
 - Block all chat while any job is PROCESSING — rejected (clarification chose A).
 
 ## R5 — Embedding identity mismatch → fail until re-index
@@ -82,6 +86,7 @@ Flyway V3 uses `vector(768)` and Ollama `nomic-embed-text`—silent truncate in
 `toFloatArray`.
 
 **Alternatives considered**:
+
 - Auto-reindex on config change — rejected (clarification).
 - Dual-index — rejected (YAGNI).
 
@@ -98,6 +103,7 @@ exits without recreating the document).
 row but does not explicitly cancel the async job.
 
 **Alternatives considered**:
+
 - Wait for job completion then delete — rejected (worse UX).
 - Soft-delete with later GC — rejected (YAGNI for local single-user).
 
@@ -112,6 +118,7 @@ needed; production local path fails closed.
 scores.
 
 **Alternatives considered**:
+
 - Keep ILIKE as degraded mode with `similarity` null and UI badge — deferred;
   not clarified; risks silent trust issues.
 
@@ -127,6 +134,7 @@ unaffected.
 **Rationale**: Spec deferred exact timeout to planning.
 
 **Alternatives considered**:
+
 - 2-minute timeout — too aggressive for 80 MB PDFs on slow hardware.
 - No timeout, only startup recovery — insufficient for long-lived process.
 
@@ -143,8 +151,9 @@ parse (see `contracts/api-errors.md`).
 **Rationale**: FR-008; UI feature depends on outcomes without stack traces.
 
 **Alternatives considered**:
+
 - RFC 7807 only — acceptable if mapped; prefer simple `{ code, message,
-  requestId }` matching existing Atlas envelope lean style.
+requestId }` matching existing Atlas envelope lean style.
 - Change frontend only — rejected; backend must emit the shape.
 
 ## R10 — Boundary with `003-improve-vector-embeddings`
@@ -159,6 +168,7 @@ fail-closed work here.
 **Rationale**: Two specs; constitution VII.
 
 **Alternatives considered**:
+
 - Merge 002 and 003 — out of scope for this plan command.
 
 ## R11 — Citation minimum fields

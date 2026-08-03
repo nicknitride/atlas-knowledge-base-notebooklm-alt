@@ -8,7 +8,7 @@
 
 **Input**: User description: "003-improve vector embeddings"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Indexed sources are actually findable (Priority: P1)
 
@@ -146,7 +146,7 @@ getting a false “fully indexed” experience.
 - Mixed documents: some rebuilt under new identity, some still on old identity.
 - Chat available but embeddings unavailable (or the reverse).
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -198,7 +198,7 @@ getting a false “fully indexed” experience.
 - **Embedding configuration**: User-documented settings for embedding endpoint
   and model (distinct from chat model configuration).
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -222,7 +222,7 @@ getting a false “fully indexed” experience.
 - **SC-006**: Acceptance tests for the above journeys exist and fail if
   stand-in vectors, fake similarity, or missing rebuild behavior regress.
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: Feature MUST work with a local stack and Ollama (or
   compatible local endpoint) for embeddings without requiring a cloud embedding

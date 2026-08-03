@@ -11,7 +11,5 @@ export function computeSourcesVisible({
   sourcesUserCollapsed,
 }: SourcesVisibilityInput): boolean {
   const sourcesAutoEligible = citationCount > 0;
-  return (
-    sourcesForcedOpen || (sourcesAutoEligible && !sourcesUserCollapsed)
-  );
+  return sourcesForcedOpen || (sourcesAutoEligible && !sourcesUserCollapsed);
 }

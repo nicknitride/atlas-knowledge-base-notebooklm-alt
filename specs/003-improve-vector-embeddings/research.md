@@ -1,7 +1,7 @@
 # Phase 0 Research: Vector Embedding & Rebuild Architecture
 
 **Feature**: `003-improve-vector-embeddings`  
-**Date**: 2026-08-02  
+**Date**: 2026-08-02
 
 ## Overview & Goals
 
@@ -19,8 +19,8 @@ This research evaluates the technical approach for enforcing real, honest vector
   - Stored/tracked at the document level (`documents.embedding_model`, `documents.embedding_dimensions`) so each document can be compared against the currently active identity.
 - **Rationale**: Combining model name and dimensions guarantees exact vector compatibility. A change to either field invalidates vector cosine distance operations in pgvector.
 - **Alternatives Considered**:
-  - *Storing vector hashes*: Unnecessary complexity; model name + dimension uniquely identifies the vector space.
-  - *Parallel multi-model index tables*: Violates Simplicity principle (YAGNI/KISS). Spec explicitly calls for single active identity with rebuild capability.
+  - _Storing vector hashes_: Unnecessary complexity; model name + dimension uniquely identifies the vector space.
+  - _Parallel multi-model index tables_: Violates Simplicity principle (YAGNI/KISS). Spec explicitly calls for single active identity with rebuild capability.
 
 ---
 
@@ -33,7 +33,7 @@ This research evaluates the technical approach for enforcing real, honest vector
   - `FAILED`: Ingestion status `FAILED` or embedding generation error occurred.
 - **Rationale**: Frontend needs clear status to explain why retrieval might be disabled or why a rebuild action is prompted, fulfilling FR-008 and User Story 3.
 - **Alternatives Considered**:
-  - *Workspace-only status*: Doesn't allow users to pinpoint which specific documents failed or need rebuilding in a mixed-state workspace.
+  - _Workspace-only status_: Doesn't allow users to pinpoint which specific documents failed or need rebuilding in a mixed-state workspace.
 
 ---
 
@@ -51,7 +51,7 @@ This research evaluates the technical approach for enforcing real, honest vector
   - 9. If any document fails (e.g. Ollama unreachable or model missing), record document status as `FAILED` and return summary response indicating partial or total failure.
 - **Rationale**: Re-indexing from stored original document files allows users to switch embedding models locally (e.g. from `nomic-embed-text` to `mxbai-embed-large`) without re-uploading source files.
 - **Alternatives Considered**:
-  - *Storing raw chunks permanently*: Original files are already preserved in file storage; re-extracting guarantees chunking strategy improvements can also apply during rebuild.
+  - _Storing raw chunks permanently_: Original files are already preserved in file storage; re-extracting guarantees chunking strategy improvements can also apply during rebuild.
 
 ---
 
@@ -64,7 +64,7 @@ This research evaluates the technical approach for enforcing real, honest vector
   - `VectorSearchService` MUST fail honestly when query embedding fails or when workspace is `STALE` without rebuild.
 - **Rationale**: Satisfies FR-003, FR-004, FR-005, SC-002, SC-003, and User Story 2 ("Honest embedding failures"). Placeholder vectors create false confidence and break grounded retrieval trust.
 - **Alternatives Considered**:
-  - *Falling back to keyword search when vectors fail*: Out of scope per spec assumptions; spec requires honest vector failures rather than hybrid fallback hiding embedding outage.
+  - _Falling back to keyword search when vectors fail_: Out of scope per spec assumptions; spec requires honest vector failures rather than hybrid fallback hiding embedding outage.
 
 ---
 
@@ -81,8 +81,8 @@ This research evaluates the technical approach for enforcing real, honest vector
 
 ## Risk & Mitigation Matrix
 
-| Risk | Impact | Mitigation Strategy |
-|------|--------|---------------------|
-| Ollama stopped during rebuild | Partial workspace rebuild failure | Transactional per-document rebuild; set failed documents to `FAILED` with explicit error message; allow retry. |
-| Vector dimension mismatch in pgvector column | Database SQL query exception | Database column configured for 768d by default (Flyway V3); pre-flight validation in `DefaultEmbeddingProvider` checks returned vector length against expected dimensions before DB insert. |
-| Large workspace rebuild timeout | HTTP request timeout | Return HTTP 202 Accepted with background job ID or stream rebuild progress via job endpoint if needed; synchronous batch for small workspaces. |
+| Risk                                         | Impact                            | Mitigation Strategy                                                                                                                                                                         |
+| -------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ollama stopped during rebuild                | Partial workspace rebuild failure | Transactional per-document rebuild; set failed documents to `FAILED` with explicit error message; allow retry.                                                                              |
+| Vector dimension mismatch in pgvector column | Database SQL query exception      | Database column configured for 768d by default (Flyway V3); pre-flight validation in `DefaultEmbeddingProvider` checks returned vector length against expected dimensions before DB insert. |
+| Large workspace rebuild timeout              | HTTP request timeout              | Return HTTP 202 Accepted with background job ID or stream rebuild progress via job endpoint if needed; synchronous batch for small workspaces.                                              |

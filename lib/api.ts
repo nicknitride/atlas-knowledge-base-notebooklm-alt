@@ -411,10 +411,9 @@ export async function getIndexHealth(
 export async function rebuildWorkspaceIndex(
   workspaceId: string,
 ): Promise<RebuildResponse> {
-  const res = await fetch(
-    `${API_BASE}/api/workspaces/${workspaceId}/rebuild`,
-    { method: "POST" },
-  );
+  const res = await fetch(`${API_BASE}/api/workspaces/${workspaceId}/rebuild`, {
+    method: "POST",
+  });
   await throwIfNotOk(res, "Failed to rebuild workspace index");
   return res.json();
 }
