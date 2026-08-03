@@ -166,7 +166,39 @@ export default function ChatPanel({
         }
 
         if (isThinkingRef.current) {
-          setThinkingText((prev) => prev + _chunk);
+          // setThinkingText((prev) => prev + _chunk);
+          setThinkingText((prev) => {//This implementation accounts for 
+            if (!_chunk) return prev;
+
+            // First thinking chunk: just use it as-is
+            if (!prev) return _chunk;
+
+            const last = prev[prev.length - 1];
+            const first = _chunk[0];
+
+            const isLetter = (c: string) => /[A-Za-z]/.test(c);
+            const isLower = (c: string) => /[a-z]/.test(c);
+            const isWhitespace = (c: string) => /\s/.test(c);
+            const isPunct = (c: string) => /[.,!?;:)\]]/.test(c);
+
+            let needsSpace = false;
+
+            if (!isWhitespace(last) && !isPunct(first)) {
+              if (isLetter(last) && isLetter(first)) {
+                // lowercase + lowercase → likely mid-word: "divers" + "ification"
+                if (!(isLower(last) && isLower(first))) {
+                  // anything else (e.g., "e" + "G") → new word
+                  needsSpace = true;
+                }
+              } else {
+                // letter → digit, digit → letter, etc. — often safer with a space
+                needsSpace = true;
+              }
+            }
+
+            return prev + (needsSpace ? " " : "") + _chunk;
+          });
+
           return;
         }
         setMessages((prev) => {
