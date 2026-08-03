@@ -16,7 +16,7 @@
 - Q: Should the message input also receive keyboard focus when the user selects an existing conversation that has no messages yet (not only right after creating one)? → A: Focus compose only immediately after successfully creating a conversation
 - Q: If the user creates a new conversation while the Documents navigation view is active, should the navigation switch to the Chat view? → A: Yes — switch navigation to Chat and select the new conversation
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Land in ready-to-type chat after starting a conversation (Priority: P1)
 
@@ -94,7 +94,7 @@ messages and confirm pre-start guidance is gone and compose is available.
 - If conversation creation fails, the user stays on a recoverable error path and
   is not left in an ambiguous half-selected state.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -129,7 +129,7 @@ messages and confirm pre-start guidance is gone and compose is available.
 - **Empty-thread chat experience**: Compose-ready main area for a selected
   conversation that has no messages yet.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -146,7 +146,7 @@ messages and confirm pre-start guidance is gone and compose is available.
 - **SC-004**: Canceling the create dialog never changes the selected
   conversation in 100% of trials.
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: Feature MUST work with a local stack and Ollama (or compatible
   local endpoint) without requiring a cloud model provider.

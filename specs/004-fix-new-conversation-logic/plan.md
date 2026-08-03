@@ -47,17 +47,17 @@ selected; preserve existing send behavior for conversations with messages
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Gate | Status | Notes |
-|------|--------|--------|
-| **I. Test-First** | Pass | Vitest/RTL already available; each user story gets failing tests before implementation in tasks |
-| **II. Local-First / Ollama** | Pass | UI-only; create/select/focus; no cloud LLM dependency |
-| **III. Performance & UX** | Pass | &lt;100ms UI update after create; distinct pre-start / empty-thread / error states |
-| **IV. Organization & Grounded Synthesis** | Pass | Preserves workspace/conversation selection and grounded chat; no citation changes |
-| **V. Privacy** | Pass | No new telemetry or third-party sends |
-| **VI. Configurability** | Pass | No new settings; reuses existing create dialog |
-| **VII. Simplicity** | Pass | Branch on `conversationId` + focus signal; no new services/frameworks |
+| Gate                                      | Status | Notes                                                                                           |
+| ----------------------------------------- | ------ | ----------------------------------------------------------------------------------------------- |
+| **I. Test-First**                         | Pass   | Vitest/RTL already available; each user story gets failing tests before implementation in tasks |
+| **II. Local-First / Ollama**              | Pass   | UI-only; create/select/focus; no cloud LLM dependency                                           |
+| **III. Performance & UX**                 | Pass   | &lt;100ms UI update after create; distinct pre-start / empty-thread / error states              |
+| **IV. Organization & Grounded Synthesis** | Pass   | Preserves workspace/conversation selection and grounded chat; no citation changes               |
+| **V. Privacy**                            | Pass   | No new telemetry or third-party sends                                                           |
+| **VI. Configurability**                   | Pass   | No new settings; reuses existing create dialog                                                  |
+| **VII. Simplicity**                       | Pass   | Branch on `conversationId` + focus signal; no new services/frameworks                           |
 
 **Post-design re-check**: Still Pass — contracts are UI behavioral contracts;
 data model is view-state only; no unjustified complexity.

@@ -37,9 +37,7 @@ describe("chat stream errors UI (US3)", () => {
     vi.mocked(streamChatMessage).mockImplementation(
       (_ws, _c, _q, _chunk, _cit, _done, onError) => {
         queueMicrotask(() => {
-          onError(
-            new AtlasApiError("PROVIDER_UNAVAILABLE", "Ollama is down"),
-          );
+          onError(new AtlasApiError("PROVIDER_UNAVAILABLE", "Ollama is down"));
         });
         return () => undefined;
       },

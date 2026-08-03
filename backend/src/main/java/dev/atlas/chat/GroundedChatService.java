@@ -115,12 +115,14 @@ public class GroundedChatService {
                   "AI backend returned an empty response"));
               return;
             }
+            answerText = answerText.replaceAll( "(?s)<thinking>.*?</thinking>", "").trim();
             Message assistantMessage =
                 messageRepository.saveAndFlush(new Message(conversationId, "ASSISTANT", answerText));
             List<CitationResponse> citations = saveCitations(assistantMessage.id(), chunks);
             citationConsumer.accept(citations);
 
             conversation.touch();
+            
             conversationRepository.save(conversation);
             onComplete.run();
           },

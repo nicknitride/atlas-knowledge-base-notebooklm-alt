@@ -112,7 +112,12 @@ export function ModalIdName({
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+            >
               Cancel
             </Button>
             <Button type="submit" size="sm" disabled={!labelValue.trim()}>

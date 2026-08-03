@@ -2,6 +2,7 @@ package dev.atlas.documents;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
 import dev.atlas.providers.EmbeddingProvider;
 import dev.atlas.support.AtlasProperties;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class IngestionWorkflowTest {
@@ -63,9 +65,12 @@ class IngestionWorkflowTest {
     ingestionService.executeJob(UUID.randomUUID());
 
     assertEquals(IngestionStatus.COMPLETE, doc.ingestionStatus());
+    assertEquals("nomic-embed-text", doc.embeddingModel());
+    assertEquals(768, doc.embeddingDimensions());
     assertNull(doc.failureReason());
     verify(workspaces).stampEmbeddingIdentity(workspaceId, "nomic-embed-text", 768);
-    verify(jdbc, times(1)).update(anyString(), eq(doc.id()), eq(0), anyString(), anyString(), anyString());
+    verify(jdbc).update(eq("DELETE FROM document_chunks WHERE document_id = ?"), eq(doc.id()));
+    verify(jdbc, times(1)).update(contains("INSERT INTO document_chunks"), eq(doc.id()), eq(0), anyString(), anyString(), anyString());
   }
 
   @Test
@@ -81,6 +86,39 @@ class IngestionWorkflowTest {
 
     assertEquals(IngestionStatus.FAILED, doc.ingestionStatus());
     assertNotNull(doc.failureReason());
-    verify(jdbc).update(eq("DELETE FROM document_chunks WHERE document_id = ?"), eq(doc.id()));
+    verify(jdbc, times(2)).update(eq("DELETE FROM document_chunks WHERE document_id = ?"), eq(doc.id()));
+  }
+
+  /**
+   * T005 — TDD failing test.
+   * Verifies that executeJob() deletes existing chunks for the document
+   * BEFORE inserting new ones. This test MUST fail against the current
+   * code (no DELETE on success path) and pass after the fix.
+   */
+  @Test
+  void executeJobDeletesExistingChunksBeforeInserting() throws Exception {
+    UUID workspaceId = UUID.randomUUID();
+    KnowledgeDocument doc = new KnowledgeDocument(workspaceId, "report.pdf", "application/pdf", "key-report");
+
+    when(documents.findById(any())).thenReturn(Optional.of(doc));
+    when(storage.resolve("key-report")).thenReturn(Path.of("dummy/report.pdf"));
+    when(extractor.extract(any(), eq("application/pdf"), eq("report.pdf")))
+        .thenReturn(List.of(new DocumentExtractor.ExtractedSection("Section 1", "Content of the report chunk.")));
+    when(embeddingProvider.embed(anyString())).thenReturn(new float[768]);
+
+    ingestionService.executeJob(UUID.randomUUID());
+
+    assertEquals(IngestionStatus.COMPLETE, doc.ingestionStatus());
+
+    // Verify that DELETE is called before any INSERT using strict InOrder.
+    // The DELETE call signature: update(String sql, Object... args) → (sql, documentId)
+    // The INSERT call signature: update(String sql, Object... args) → (sql, docId, ordinal, content, locator, vector)
+    InOrder order = inOrder(jdbc);
+    order.verify(jdbc).update(
+        eq("DELETE FROM document_chunks WHERE document_id = ?"),
+        eq(doc.id()));
+    order.verify(jdbc).update(
+        contains("INSERT INTO document_chunks"),
+        eq(doc.id()), eq(0), anyString(), anyString(), anyString());
   }
 }

@@ -21,6 +21,8 @@ class KnowledgeDocument {
   @Column(name = "storage_key", nullable = false) private String storageKey;
   @Enumerated(EnumType.STRING) @Column(name = "ingestion_status", nullable = false) private IngestionStatus ingestionStatus;
   @Column(name = "failure_reason") private String failureReason;
+  @Column(name = "embedding_model") private String embeddingModel;
+  @Column(name = "embedding_dimensions") private Integer embeddingDimensions;
   @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt = Instant.now();
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
   protected KnowledgeDocument() {}
@@ -30,9 +32,11 @@ class KnowledgeDocument {
   }
   UUID id() { return id; } UUID workspaceId() { return workspaceId; } String originalFilename() { return originalFilename; }
   String contentType() { return contentType; } String storageKey() { return storageKey; } IngestionStatus ingestionStatus() { return ingestionStatus; }
-  String failureReason() { return failureReason; } Instant createdAt() { return createdAt; }
+  String failureReason() { return failureReason; } String embeddingModel() { return embeddingModel; } Integer embeddingDimensions() { return embeddingDimensions; } Instant createdAt() { return createdAt; }
   void markProcessing() { ingestionStatus = IngestionStatus.PROCESSING; touch(); }
   void markComplete() { ingestionStatus = IngestionStatus.COMPLETE; failureReason = null; touch(); }
+  void markComplete(String model, int dimensions) { ingestionStatus = IngestionStatus.COMPLETE; this.embeddingModel = model; this.embeddingDimensions = dimensions; failureReason = null; touch(); }
+  void setEmbeddingIdentity(String model, int dimensions) { this.embeddingModel = model; this.embeddingDimensions = dimensions; touch(); }
   void markFailed(String reason) { ingestionStatus = IngestionStatus.FAILED; failureReason = reason; touch(); }
   private void touch() { updatedAt = Instant.now(); }
 }

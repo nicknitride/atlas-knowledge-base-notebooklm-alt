@@ -99,6 +99,52 @@ export interface ConversationDetail extends Conversation {
   messages: Message[];
 }
 
+export type DocumentHealthStatus = "READY" | "STALE" | "PENDING" | "FAILED";
+
+export interface EmbeddingIdentity {
+  model: string;
+  dimensions: number;
+}
+
+export interface DocumentHealthItem {
+  id: string;
+  originalFilename: string;
+  ingestionStatus: string;
+  healthStatus: DocumentHealthStatus;
+  embeddingModel: string | null;
+  embeddingDimensions: number | null;
+  errorMessage: string | null;
+}
+
+export interface IndexHealthResponse {
+  workspaceId: string;
+  activeEmbeddingIdentity: EmbeddingIdentity;
+  indexedEmbeddingIdentity: EmbeddingIdentity | null;
+  status: DocumentHealthStatus;
+  totalDocuments: number;
+  readyDocuments: number;
+  staleDocuments: number;
+  pendingDocuments: number;
+  failedDocuments: number;
+  documents: DocumentHealthItem[];
+}
+
+export interface RebuildErrorItem {
+  documentId: string;
+  filename: string;
+  errorMessage: string;
+}
+
+export interface RebuildResponse {
+  workspaceId: string;
+  status: "COMPLETED" | "PARTIAL_FAILURE" | "FAILED";
+  totalProcessed: number;
+  rebuiltCount: number;
+  failedCount: number;
+  activeEmbeddingIdentity: EmbeddingIdentity;
+  errors: RebuildErrorItem[];
+}
+
 export async function fetchWorkspaces(): Promise<Workspace[]> {
   const res = await fetch(`${API_BASE}/api/workspaces`);
   await throwIfNotOk(res, "Could not load workspaces.");
@@ -293,6 +339,8 @@ export function streamChatMessage(
               ? line.substring(6)
               : line.substring(5);
             if (currentEvent === "chunk") {
+              // console.log("chunk from react backend: ",data);
+              console.log(JSON.stringify(data));
               onChunk(data);
             } else if (currentEvent === "citations") {
               try {
@@ -350,4 +398,24 @@ export function streamChatMessage(
   return () => {
     controller.abort();
   };
+}
+
+export async function getIndexHealth(
+  workspaceId: string,
+): Promise<IndexHealthResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/workspaces/${workspaceId}/index-health`,
+  );
+  await throwIfNotOk(res, "Failed to fetch index health");
+  return res.json();
+}
+
+export async function rebuildWorkspaceIndex(
+  workspaceId: string,
+): Promise<RebuildResponse> {
+  const res = await fetch(`${API_BASE}/api/workspaces/${workspaceId}/rebuild`, {
+    method: "POST",
+  });
+  await throwIfNotOk(res, "Failed to rebuild workspace index");
+  return res.json();
 }

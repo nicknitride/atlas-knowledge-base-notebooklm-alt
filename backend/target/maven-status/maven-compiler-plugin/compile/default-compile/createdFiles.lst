@@ -1,9 +1,17 @@
 dev/atlas/workspaces/WorkspaceLookup$EmbeddingIdentity.class
 dev/atlas/support/AtlasProperties$Provider.class
 dev/atlas/support/ApiException.class
+dev/atlas/documents/DocumentHealthStatus.class
+dev/atlas/documents/RebuildService$DocumentHealthItem.class
 dev/atlas/support/ApiErrorHandler$1.class
+dev/atlas/documents/RebuildService$RebuildResponse.class
+dev/atlas/documents/RebuildService$1.class
 dev/atlas/support/ApiError.class
+dev/atlas/documents/RebuildService$EmbeddingIdentityDto.class
 dev/atlas/support/AtlasProperties$Ollama.class
 dev/atlas/support/AtlasProperties$Ingestion.class
+dev/atlas/documents/RebuildService$RebuildErrorItem.class
+dev/atlas/documents/RebuildService$IndexHealthResponse.class
 dev/atlas/support/AtlasProperties.class
 dev/atlas/support/ApiErrorHandler.class
+dev/atlas/documents/RebuildService.class

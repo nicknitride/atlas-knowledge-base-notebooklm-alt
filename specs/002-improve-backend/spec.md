@@ -18,7 +18,7 @@
 - Q: What default maximum upload size should FR-003 enforce (unless the user overrides it in documented configuration)? → A: 80 MB default per file; expose clear progress/status outcomes so the UI can keep the user informed
 - Q: What is the minimum identity a citation must include so a user can verify a grounded answer against the source? → A: Document id/name + verbatim snippet/passage text (page/offset optional when available)
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Trustworthy document ingestion (Priority: P1)
 
@@ -182,7 +182,7 @@ complete upload → index → grounded chat for a sample document end-to-end.
   chat/retrieval fails clearly until re-index or restore of a compatible model;
   no mixed-dimension or cross-model vector search.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -259,7 +259,7 @@ complete upload → index → grounded chat for a sample document end-to-end.
 - **AI provider configuration**: User-selected local (default) or optional
   remote endpoint/model settings for chat and embeddings.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -287,7 +287,7 @@ complete upload → index → grounded chat for a sample document end-to-end.
   provider down) are covered by automated tests that fail if regressions are
   introduced, before implementation merges.
 
-## Non-Functional Constraints *(mandatory for Atlas)*
+## Non-Functional Constraints _(mandatory for Atlas)_
 
 - **Local-first**: Feature MUST work with a local stack and Ollama (or
   compatible local endpoint) without requiring a cloud model provider.

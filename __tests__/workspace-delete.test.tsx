@@ -139,7 +139,9 @@ describe("workspace delete (US1)", () => {
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/unreachable|Backend/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /unreachable|Backend/i,
+      );
     });
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.getByText(/Delete "Alpha"\?/i)).toBeInTheDocument();

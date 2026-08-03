@@ -56,17 +56,17 @@ metadata requires a small schema add; document config in README / `.env.example`
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Gate | Status | Notes |
-|------|--------|--------|
-| **I. Test-First** | Pass | Existing JUnit/Testcontainers; tasks will list failing tests before implementation per story |
-| **II. Local-First / Ollama** | Pass | Default `ATLAS_PROVIDER_TYPE` local path maps to Ollama-compatible endpoint; cloud opt-in only |
-| **III. Performance & UX** | Pass | SC-001/SC-003 targets; API exposes ingest progress/status + actionable errors for UI |
-| **IV. Organization & Grounded Synthesis** | Pass | Workspace isolation; citations require document id/name + snippet; COMPLETE-only grounding |
-| **V. Privacy** | Pass | No required third-party send; fail instead of silent cloud; logs avoid payloads |
-| **VI. Configurability** | Pass | Ollama URL/models, upload max size, embedding model/dim via env/config |
-| **VII. Simplicity** | Pass | Fix existing pipeline; no new broker/service; Complexity Tracking empty |
+| Gate                                      | Status | Notes                                                                                          |
+| ----------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| **I. Test-First**                         | Pass   | Existing JUnit/Testcontainers; tasks will list failing tests before implementation per story   |
+| **II. Local-First / Ollama**              | Pass   | Default `ATLAS_PROVIDER_TYPE` local path maps to Ollama-compatible endpoint; cloud opt-in only |
+| **III. Performance & UX**                 | Pass   | SC-001/SC-003 targets; API exposes ingest progress/status + actionable errors for UI           |
+| **IV. Organization & Grounded Synthesis** | Pass   | Workspace isolation; citations require document id/name + snippet; COMPLETE-only grounding     |
+| **V. Privacy**                            | Pass   | No required third-party send; fail instead of silent cloud; logs avoid payloads                |
+| **VI. Configurability**                   | Pass   | Ollama URL/models, upload max size, embedding model/dim via env/config                         |
+| **VII. Simplicity**                       | Pass   | Fix existing pipeline; no new broker/service; Complexity Tracking empty                        |
 
 **Post-design re-check**: Still Pass — contracts document API error/status
 shapes and fail-closed provider behavior; data model adds optional embedding

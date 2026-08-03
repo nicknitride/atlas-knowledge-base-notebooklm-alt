@@ -22,6 +22,8 @@ import {
   Workspace,
   DocumentItem,
   Conversation,
+  IndexHealthResponse,
+  RebuildResponse,
   fetchWorkspaces,
   createWorkspace,
   deleteWorkspace,
@@ -33,8 +35,11 @@ import {
   createConversation,
   deleteConversation,
   renameConversation,
+  getIndexHealth,
 } from "@/lib/api";
 import { messageForApiError } from "@/lib/api-error-messages";
+import { IndexHealthBadge } from "@/components/workspace/index-health-badge";
+import { RebuildIndexDialog } from "@/components/workspace/rebuild-index-dialog";
 
 interface SidebarProps {
   currentWorkspaceId: string | null;
@@ -56,11 +61,7 @@ interface SidebarProps {
 import { ModalIdName } from "./modal-id-name";
 import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
 import { filterByName } from "@/lib/list-filter";
-import {
-  AppearanceMode,
-  getAppearance,
-  setAppearance,
-} from "@/lib/appearance";
+import { AppearanceMode, getAppearance, setAppearance } from "@/lib/appearance";
 
 export default function Sidebar({
   currentWorkspaceId,
@@ -126,9 +127,25 @@ export default function Sidebar({
   const [showRenameConvoModal, setShowRenameConvoModal] = useState(false);
   const [renameConvoText, setRenameConvoText] = useState("");
 
+  // Index Health
+  const [indexHealth, setIndexHealth] = useState<IndexHealthResponse | null>(
+    null,
+  );
+  const [showRebuildDialog, setShowRebuildDialog] = useState(false);
+
   useEffect(() => {
     setAppearanceState(getAppearance());
   }, []);
+
+  useEffect(() => {
+    if (currentWorkspaceId && activeTab === "documents") {
+      getIndexHealth(currentWorkspaceId)
+        .then(setIndexHealth)
+        .catch(() => setIndexHealth(null));
+    } else {
+      setIndexHealth(null);
+    }
+  }, [currentWorkspaceId, activeTab, documents]);
 
   useEffect(() => {
     if (requestCreateWorkspace > 0) {
@@ -213,9 +230,7 @@ export default function Sidebar({
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      setWorkspaceMutationError(
-        messageForApiError(err, "create workspace"),
-      );
+      setWorkspaceMutationError(messageForApiError(err, "create workspace"));
     }
   };
 
@@ -240,9 +255,7 @@ export default function Sidebar({
       await loadWorkspaces();
       onSelectWorkspace(ws.id);
     } catch (err) {
-      setWorkspaceMutationError(
-        messageForApiError(err, "rename workspace"),
-      );
+      setWorkspaceMutationError(messageForApiError(err, "rename workspace"));
     }
   };
 
@@ -533,8 +546,7 @@ export default function Sidebar({
                   onAction={() => setShowNewWorkspaceModal(true)}
                 />
               ) : null}
-              {!isLoading &&
-              filteredWorkspaces.emptyReason === "no-matches" ? (
+              {!isLoading && filteredWorkspaces.emptyReason === "no-matches" ? (
                 <EmptyState
                   title="No matches"
                   description="No workspaces match this filter."
@@ -818,9 +830,73 @@ export default function Sidebar({
                   </div>
                 ))}
               </div>
+
+              {/* Index Health Section */}
+              {indexHealth && currentWorkspaceId && (
+                <div className="mt-4 rounded-xl border border-sidebar-border bg-card/40 p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Index Health
+                    </span>
+                    <IndexHealthBadge status={indexHealth.status} />
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                    <div className="rounded-lg bg-emerald-500/10 py-1.5">
+                      <div className="font-semibold text-emerald-400">
+                        {indexHealth.readyDocuments}
+                      </div>
+                      <div className="text-muted-foreground">Ready</div>
+                    </div>
+                    <div className="rounded-lg bg-amber-500/10 py-1.5">
+                      <div className="font-semibold text-amber-400">
+                        {indexHealth.staleDocuments}
+                      </div>
+                      <div className="text-muted-foreground">Stale</div>
+                    </div>
+                    <div className="rounded-lg bg-blue-500/10 py-1.5">
+                      <div className="font-semibold text-blue-400">
+                        {indexHealth.pendingDocuments}
+                      </div>
+                      <div className="text-muted-foreground">Pending</div>
+                    </div>
+                    <div className="rounded-lg bg-red-500/10 py-1.5">
+                      <div className="font-semibold text-red-400">
+                        {indexHealth.failedDocuments}
+                      </div>
+                      <div className="text-muted-foreground">Failed</div>
+                    </div>
+                  </div>
+                  {(indexHealth.status === "STALE" ||
+                    indexHealth.status === "FAILED") && (
+                    <button
+                      id="sidebar-rebuild-index-btn"
+                      onClick={() => setShowRebuildDialog(true)}
+                      className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 py-1.5 text-xs font-medium text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-300"
+                    >
+                      Rebuild Index
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </nav>
+
+        {showRebuildDialog && currentWorkspaceId && indexHealth && (
+          <RebuildIndexDialog
+            workspaceId={currentWorkspaceId}
+            health={indexHealth}
+            onClose={() => setShowRebuildDialog(false)}
+            onRebuildComplete={(result: RebuildResponse) => {
+              setShowRebuildDialog(false);
+              // Refresh health after rebuild
+              getIndexHealth(currentWorkspaceId)
+                .then(setIndexHealth)
+                .catch(() => {});
+              void result;
+            }}
+          />
+        )}
 
         {/* Footer */}
         <div className="p-4 border-t border-sidebar-border space-y-3">
@@ -938,11 +1014,7 @@ export default function Sidebar({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isDeletingWorkspace}
-                >
+                <Button type="submit" size="sm" disabled={isDeletingWorkspace}>
                   {isDeletingWorkspace ? "Deleting…" : "Confirm"}
                 </Button>
               </div>

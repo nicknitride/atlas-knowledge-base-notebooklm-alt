@@ -43,6 +43,7 @@ atlas:
       model: ${ATLAS_OLLAMA_MODEL:llama3}
       embedding-model: ${ATLAS_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
       embedding-dimensions: ${ATLAS_OLLAMA_EMBEDDING_DIMENSIONS:768}
+      num-ctx: ${ATLAS_OLLAMA_NUM_CTX:16384}
     openai:
       api-key: ${ATLAS_OPENAI_API_KEY:}
       model: ${ATLAS_OPENAI_MODEL:gpt-4o-mini}

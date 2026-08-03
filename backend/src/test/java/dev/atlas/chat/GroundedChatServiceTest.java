@@ -41,6 +41,8 @@ class GroundedChatServiceTest {
         .thenReturn(Optional.of(conversation));
     when(messageRepository.save(any(Message.class)))
         .thenAnswer(inv -> inv.getArgument(0));
+    when(messageRepository.saveAndFlush(any(Message.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
 
     RetrievedChunk chunk = new RetrievedChunk(
         UUID.randomUUID(), UUID.randomUUID(), "doc.txt", 0, "Quarterly revenue was $50M.", "{\"location\":\"Page 1\"}", 0.95
@@ -85,6 +87,8 @@ class GroundedChatServiceTest {
     when(conversationRepository.findByIdAndWorkspaceId(conversationId, workspaceId))
         .thenReturn(Optional.of(conversation));
     when(messageRepository.save(any(Message.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(messageRepository.saveAndFlush(any(Message.class)))
         .thenAnswer(inv -> inv.getArgument(0));
     when(retrievalService.search(any(UUID.class), anyString(), anyInt(), anyDouble()))
         .thenReturn(List.of());

@@ -6,7 +6,7 @@ import java.util.List;
 public class OllamaDtos {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record OllamaChatMessage(String role, String content) {}
+  public record OllamaChatMessage(String role, String content, String thinking) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record OllamaChatResponse(OllamaChatMessage message, Boolean done) {}

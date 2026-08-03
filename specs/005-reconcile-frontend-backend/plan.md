@@ -56,17 +56,17 @@ files; optional small shared message-map helper under `lib/`
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Gate | Status | Notes |
-|------|--------|--------|
-| **I. Test-First** | Pass | Tasks will list failing Vitest cases before each story’s implementation |
-| **II. Local-First / Ollama** | Pass | Provider-unavailable messaging exercised against local stack; no cloud required |
-| **III. Performance & UX** | Pass | Spec NFRs for delete/switch/doc lag; loading/error/empty states required per repaired path |
-| **IV. Organization & Grounded Synthesis** | Pass | Preserve workspaces/docs/conversations; FR-018 — no grounded presentation without citations |
-| **V. Privacy** | Pass | Errors stay local; no telemetry; messages from own API only |
-| **VI. Configurability** | Pass | No new knobs; existing `NEXT_PUBLIC_ATLAS_API_URL` / CORS / upload limits unchanged |
-| **VII. Simplicity** | Pass | Repair existing API client + components; no React Query/SWR/Zustand; Complexity Tracking empty |
+| Gate                                      | Status | Notes                                                                                          |
+| ----------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| **I. Test-First**                         | Pass   | Tasks will list failing Vitest cases before each story’s implementation                        |
+| **II. Local-First / Ollama**              | Pass   | Provider-unavailable messaging exercised against local stack; no cloud required                |
+| **III. Performance & UX**                 | Pass   | Spec NFRs for delete/switch/doc lag; loading/error/empty states required per repaired path     |
+| **IV. Organization & Grounded Synthesis** | Pass   | Preserve workspaces/docs/conversations; FR-018 — no grounded presentation without citations    |
+| **V. Privacy**                            | Pass   | Errors stay local; no telemetry; messages from own API only                                    |
+| **VI. Configurability**                   | Pass   | No new knobs; existing `NEXT_PUBLIC_ATLAS_API_URL` / CORS / upload limits unchanged            |
+| **VII. Simplicity**                       | Pass   | Repair existing API client + components; no React Query/SWR/Zustand; Complexity Tracking empty |
 
 **Post-design re-check**: Still Pass — contracts document client-facing
 consumption of existing backend shapes only; data model is UI/client view of

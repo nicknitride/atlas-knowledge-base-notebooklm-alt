@@ -33,10 +33,7 @@ function asAtlasError(err: unknown): AtlasApiError | null {
 /**
  * Prefer backend message when present; otherwise map known codes to user copy.
  */
-export function messageForApiError(
-  err: unknown,
-  actionLabel: string,
-): string {
+export function messageForApiError(err: unknown, actionLabel: string): string {
   const apiErr = asAtlasError(err);
   if (apiErr) {
     const trimmed = apiErr.message?.trim();

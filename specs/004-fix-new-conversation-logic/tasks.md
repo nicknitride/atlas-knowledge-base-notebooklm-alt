@@ -28,7 +28,7 @@ precede implementation for each behavior (including shared helpers).
 **Purpose**: Confirm existing test tooling; no new product packages
 
 - [x] T001 Verify Vitest + RTL scripts and config already work (`pnpm test`) via package.json and vitest.config.mts — document no new dependencies needed for this feature
-- [x] T002 [P] Add test file stubs (empty `describe` placeholders only) in __tests__/chat-main-mode.test.ts and __tests__/conversation-create-flow.test.tsx so paths exist before red tests
+- [x] T002 [P] Add test file stubs (empty `describe` placeholders only) in **tests**/chat-main-mode.test.ts and **tests**/conversation-create-flow.test.tsx so paths exist before red tests
 
 ---
 
@@ -40,8 +40,8 @@ precede implementation for each behavior (including shared helpers).
 
 ### chat-main-mode helper (TDD)
 
-- [x] T003 Write failing unit tests for derived modes (`no-workspace` | `pre-start` | `empty-thread` | `active-thread`) in __tests__/chat-main-mode.test.ts per data-model.md and contracts/conversation-create-flow.md
-- [x] T004 Implement pure helper `deriveChatMainMode({ workspaceId, conversationId, messageCount })` in lib/chat-main-mode.ts to pass __tests__/chat-main-mode.test.ts
+- [x] T003 Write failing unit tests for derived modes (`no-workspace` | `pre-start` | `empty-thread` | `active-thread`) in **tests**/chat-main-mode.test.ts per data-model.md and contracts/conversation-create-flow.md
+- [x] T004 Implement pure helper `deriveChatMainMode({ workspaceId, conversationId, messageCount })` in lib/chat-main-mode.ts to pass **tests**/chat-main-mode.test.ts
 
 **Checkpoint**: Mode helper green; stories may wire UI
 
@@ -55,10 +55,10 @@ precede implementation for each behavior (including shared helpers).
 
 ### Tests for User Story 1 (REQUIRED — write first, ensure FAIL) ⚠️
 
-- [x] T005 [P] [US1] Failing ChatPanel tests: with `conversationId` set and zero messages, Start CTA and three suggestion prompts are absent and compose is enabled in __tests__/chat-empty.test.tsx (extend; keep pre-start case for `conversationId === null`)
-- [x] T006 [P] [US1] Failing create-flow tests: mocked successful create selects conversation, sets Chat tab, and focuses compose textarea in __tests__/conversation-create-flow.test.tsx per contracts/conversation-create-flow.md
-- [x] T007 [P] [US1] Failing create-flow tests: create while Documents tab active switches to Chat + selects + focuses compose; cancel/blank name leave selection unchanged; API failure does not select in __tests__/conversation-create-flow.test.tsx
-- [x] T008 [P] [US1] Failing test: selecting an existing empty conversation shows empty-thread UI but does **not** autofocus compose in __tests__/conversation-create-flow.test.tsx (FR-002)
+- [x] T005 [P] [US1] Failing ChatPanel tests: with `conversationId` set and zero messages, Start CTA and three suggestion prompts are absent and compose is enabled in **tests**/chat-empty.test.tsx (extend; keep pre-start case for `conversationId === null`)
+- [x] T006 [P] [US1] Failing create-flow tests: mocked successful create selects conversation, sets Chat tab, and focuses compose textarea in **tests**/conversation-create-flow.test.tsx per contracts/conversation-create-flow.md
+- [x] T007 [P] [US1] Failing create-flow tests: create while Documents tab active switches to Chat + selects + focuses compose; cancel/blank name leave selection unchanged; API failure does not select in **tests**/conversation-create-flow.test.tsx
+- [x] T008 [P] [US1] Failing test: selecting an existing empty conversation shows empty-thread UI but does **not** autofocus compose in **tests**/conversation-create-flow.test.tsx (FR-002)
 
 ### Implementation for User Story 1
 
@@ -81,14 +81,14 @@ precede implementation for each behavior (including shared helpers).
 
 ### Tests for User Story 2 (REQUIRED — write first, ensure FAIL) ⚠️
 
-- [x] T015 [P] [US2] Failing/locked tests: workspace + `conversationId === null` still shows Start CTA and three suggestion prompts in __tests__/chat-empty.test.tsx (SC-003 regression guard)
-- [x] T016 [P] [US2] Failing tests: empty-thread and pre-start are mutually exclusive for the same messageCount=0 in __tests__/chat-empty.test.tsx and/or __tests__/chat-main-mode.test.ts
+- [x] T015 [P] [US2] Failing/locked tests: workspace + `conversationId === null` still shows Start CTA and three suggestion prompts in **tests**/chat-empty.test.tsx (SC-003 regression guard)
+- [x] T016 [P] [US2] Failing tests: empty-thread and pre-start are mutually exclusive for the same messageCount=0 in **tests**/chat-empty.test.tsx and/or **tests**/chat-main-mode.test.ts
 
 ### Implementation for User Story 2
 
 - [x] T017 [US2] Audit components/chat-panel.tsx empty UI copy so empty-thread is calm compose-ready (no “Start a conversation” CTA language) while pre-start keeps guidance
 - [x] T018 [US2] Ensure list selection of an existing empty conversation reuses the same empty-thread surface as post-create (no second code path) in components/chat-panel.tsx
-- [x] T019 [US2] Align any leftover assertions/docs in __tests__/chat-empty.test.tsx with contracts/conversation-create-flow.md main-mode table
+- [x] T019 [US2] Align any leftover assertions/docs in **tests**/chat-empty.test.tsx with contracts/conversation-create-flow.md main-mode table
 
 **Checkpoint**: US1 and US2 both independently verifiable; pre-start not regressed
 
@@ -102,7 +102,7 @@ precede implementation for each behavior (including shared helpers).
 - [x] T021 Confirm pure UI transition after create feels &lt;100ms and compose focus within 1s (SC-001); note any timing fix in components/chat-panel.tsx focus effect if needed
 - [x] T022 [P] YAGNI/KISS pass: no new API fields, no redesign beyond branching/focus/error in components/chat-panel.tsx, components/sidebar.tsx, app/page.tsx
 - [x] T023 Privacy/config review: no new telemetry or cloud deps; create still uses existing local API in lib/api.ts
-- [x] T024 Run full `pnpm test` and fix regressions in __tests__/ related to chat empty states
+- [x] T024 Run full `pnpm test` and fix regressions in **tests**/ related to chat empty states
 
 ---
 

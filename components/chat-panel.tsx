@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, ArrowUp, Square, FileText } from "lucide-react";
+import { Sparkles, ArrowUp, Square, FileText, Church } from "lucide-react";
 import { Button } from "./ui/button";
 import { EmptyState, ErrorBanner, LoadingRegion } from "@/components/ui-state";
 import { deriveChatMainMode } from "@/lib/chat-main-mode";
@@ -44,6 +44,9 @@ export default function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const lastFocusTokenRef = useRef(0);
+
+  const isThinkingRef = useRef(false);
+  const [thinkingText, setThinkingText] = useState("");
 
   const mainMode = deriveChatMainMode({
     workspaceId,
@@ -135,7 +138,16 @@ export default function ChatPanel({
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, tempUserMsg]);
+    const tempAssistantMsg: Message = {
+      id: "streaming-assistant",
+      role: "ASSISTANT",
+      content: "",
+      createdAt: new Date().toISOString(),
+      citations: [],
+    };
+
+    setMessages((prev) => [...prev, tempUserMsg, tempAssistantMsg]);
+
     setIsLoading(true);
 
     const cancelFn = streamChatMessage(
@@ -143,7 +155,62 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (_chunk) => {
-        // Token streaming reserved for a future UI pass
+        const chunk = _chunk.trim();
+        if (chunk === "<thinking>") {
+          isThinkingRef.current = true;
+          return;
+        } else if (chunk === "</thinking>") {
+          isThinkingRef.current = false;
+          setThinkingText("");
+          return;
+        }
+
+        if (isThinkingRef.current) {
+          // setThinkingText((prev) => prev + _chunk);
+          setThinkingText((prev) => {//This implementation accounts for 
+            if (!_chunk) return prev;
+
+            // First thinking chunk: just use it as-is
+            if (!prev) return _chunk;
+
+            const last = prev[prev.length - 1];
+            const first = _chunk[0];
+
+            const isLetter = (c: string) => /[A-Za-z]/.test(c);
+            const isLower = (c: string) => /[a-z]/.test(c);
+            const isWhitespace = (c: string) => /\s/.test(c);
+            const isPunct = (c: string) => /[.,!?;:)\]]/.test(c);
+
+            let needsSpace = false;
+
+            if (!isWhitespace(last) && !isPunct(first)) {
+              if (isLetter(last) && isLetter(first)) {
+                // lowercase + lowercase → likely mid-word: "divers" + "ification"
+                if (!(isLower(last) && isLower(first))) {
+                  // anything else (e.g., "e" + "G") → new word
+                  needsSpace = true;
+                }
+              } else {
+                // letter → digit, digit → letter, etc. — often safer with a space
+                needsSpace = true;
+              }
+            }
+
+            return prev + (needsSpace ? " " : "") + _chunk;
+          });
+
+          return;
+        }
+        setMessages((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+
+          if (last.role === "ASSISTANT") {
+            last.content += _chunk;
+          }
+          return copy;
+        });
+        // console.log(_chunk, isThinkingRef.current);
       },
       (citations) => {
         onUpdateCitations(citations);
@@ -316,10 +383,28 @@ export default function ChatPanel({
               </div>
             ))}
             {isLoading && (
-              <LoadingRegion label="Synthesizing grounded response..." />
+              <>
+                <div>
+                  <LoadingRegion label="Synthesizing grounded response..." />
+                </div>
+              </>
             )}
             <div ref={messagesEndRef} />
           </>
+        )}
+        {thinkingText && (
+          <div className="flex justify-start">
+            <div className="max-w-xl lg:max-w-2xl rounded-2xl border border-border bg-muted/40 px-5 py-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <Sparkles size={14} />
+                Thinking...
+              </div>
+
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words font-mono">
+                {thinkingText}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { bootstrapAppearance, getAppearance, applyAppearance } from "@/lib/appearance";
+import {
+  bootstrapAppearance,
+  getAppearance,
+  applyAppearance,
+} from "@/lib/appearance";
 
 /** Applies stored appearance on mount and listens for system scheme when mode is system. */
 export function AppearanceBootstrap() {

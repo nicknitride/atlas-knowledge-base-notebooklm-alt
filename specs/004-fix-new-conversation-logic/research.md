@@ -8,6 +8,7 @@
 `components/chat-panel.tsx`, not a failed API create or missing selection.
 
 **Findings**:
+
 - `Sidebar.handleNewConversation` already calls `createConversation`, prepends
   the conversation, `onSelectConversation(conv.id)`, and `onSelectTab("chat")`.
 - `ChatPanel` renders the “Start a conversation” CTA **and** the three
@@ -21,6 +22,7 @@
 experience for any empty message list.
 
 **Alternatives considered**:
+
 - Backend change / auto-seed a system message — rejected (YAGNI; empty thread
   is valid).
 - Force-navigate via URL route — rejected (app is single-page shell state).
@@ -29,17 +31,18 @@ experience for any empty message list.
 
 **Decision**: Branch main chat content on selection, not only message count:
 
-| Condition | Main experience |
-|-----------|-----------------|
-| `!workspaceId` | No-workspace empty (unchanged) |
-| `workspaceId && !conversationId` | **Pre-start**: Start CTA + three suggestion prompts |
+| Condition                                                | Main experience                                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `!workspaceId`                                           | No-workspace empty (unchanged)                                                                     |
+| `workspaceId && !conversationId`                         | **Pre-start**: Start CTA + three suggestion prompts                                                |
 | `workspaceId && conversationId && messages.length === 0` | **Empty-thread**: calm empty thread; compose available; **no** Start CTA; **no** three suggestions |
-| `conversationId && messages.length > 0` | Message list (unchanged) |
+| `conversationId && messages.length > 0`                  | Message list (unchanged)                                                                           |
 
 **Rationale**: Matches clarifications and FR-003/FR-004; preserves first-run
 guidance when nothing is selected.
 
 **Alternatives considered**:
+
 - Hide suggestions only, keep Start CTA on empty selected thread — rejected
   (clarification: no three prompts; empty selected = compose-ready).
 - Show suggestions on empty selected thread as shortcuts — rejected (explicit
@@ -52,6 +55,7 @@ successful create from a supported entry point. Selecting an existing empty
 conversation from the list shows empty-thread UI but does **not** autofocus.
 
 **Implementation approach** (smallest):
+
 - Introduce a one-shot focus request signal from create success to `ChatPanel`
   (e.g. incrementing `requestFocusCompose` counter on `page.tsx`, or a boolean
   prop/`focusComposeToken` passed with the new id).
@@ -62,6 +66,7 @@ conversation from the list shows empty-thread UI but does **not** autofocus.
 **Rationale**: Clarification Q2; avoids stealing focus when browsing history.
 
 **Alternatives considered**:
+
 - Always focus compose when `conversationId` set and messages empty — rejected
   (clarification).
 - `autoFocus` on textarea whenever empty-thread — rejected (same reason).
@@ -74,6 +79,7 @@ non-empty / Confirm enabled). After successful create, consume focus restore so
 compose receives focus instead of the trigger button.
 
 **Approach options** (pick one in implementation; prefer smallest):
+
 1. Pass an optional `restoreFocus={false}` (or `onCloseFocus`) when closing after
    successful create, then let ChatPanel focus compose.
 2. After create, set focus request token; ChatPanel focus runs after modal
@@ -84,6 +90,7 @@ compose receives focus instead of the trigger button.
 target + main-pane branching.
 
 **Alternatives considered**:
+
 - Custom Enter handler outside the form — rejected (already works via submit).
 - Remove focus trap restore entirely — rejected (hurts cancel/a11y).
 
@@ -100,6 +107,7 @@ in `handleNewConversation`) and select the new conversation. Main column remains
 ## R6 — Failure and cancel paths
 
 **Decision**:
+
 - Cancel / empty name: no selection change (Confirm disabled when blank; cancel
   clears modal state only).
 - Create API failure: do not call `onSelectConversation` with a new id; show a

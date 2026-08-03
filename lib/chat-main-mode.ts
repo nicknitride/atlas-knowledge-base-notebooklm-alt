@@ -1,8 +1,5 @@
 export type ChatMainMode =
-  | "no-workspace"
-  | "pre-start"
-  | "empty-thread"
-  | "active-thread";
+  "no-workspace" | "pre-start" | "empty-thread" | "active-thread";
 
 export function deriveChatMainMode(input: {
   workspaceId: string | null;

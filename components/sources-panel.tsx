@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronDown,
-  FileText,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { ChevronDown, FileText, Sparkles, X } from "lucide-react";
 import { Citation } from "@/lib/api";
 import { EmptyState } from "@/components/ui-state";
 import { Button } from "@/components/ui/button";

@@ -21,6 +21,7 @@ submit; delete does not. The length gate contradicts the existing
 no-workspace empty state and FR-006.
 
 **Alternatives considered**:
+
 - Replace the form with button `onClick` only — also works, but keeping the
   form + suppress matches sibling modals and preserves Enter-to-confirm.
 - Soft-delete / archive — out of scope; backend hard-deletes.
@@ -39,6 +40,7 @@ handlers only `console.error`. Centralizing avoids per-handler duplication
 and matches `002`’s `api-errors.md` contract.
 
 **Alternatives considered**:
+
 - React Query / SWR with global `onError` — rejected (constitution
   simplicity; YAGNI).
 - Parse only in components — rejected (duplication; easy to miss a path).
@@ -54,6 +56,7 @@ idempotent-delete UX and avoids confusing “failed” after a double-confirm
 or race.
 
 **Alternatives considered**:
+
 - Show “already deleted” toast — acceptable but noisier; prefer silent
   success per spec.
 
@@ -72,6 +75,7 @@ same envelope. The client currently only handles `chunk` / `citations` /
 failures look like empty success (Story 3 / FR-015–016).
 
 **Alternatives considered**:
+
 - Switch UI to sync `POST .../messages` — works for fail-closed but drops
   existing stream path; out of scope to remove streaming.
 - Treat any stream close without citations as error — too aggressive for
@@ -82,20 +86,21 @@ failures look like empty success (Story 3 / FR-015–016).
 **Decision**: Map at least these codes to distinct user copy (backend
 message preferred when present):
 
-| code | User-facing intent |
-|------|--------------------|
-| `VALIDATION_ERROR` | Fix the input (keep modal open where applicable) |
-| `NOT_FOUND` | Resource gone — delete: success; other ops: refresh/recover |
-| `UPLOAD_*` | Specific upload rejection (already partially done) |
-| `EMBEDDING_CONFIG_MISMATCH` | Workspace needs documents re-processed |
-| `PROVIDER_UNAVAILABLE` / `PROVIDER_MISCONFIGURED` | AI service unreachable / misconfigured |
-| `RETRIEVAL_UNAVAILABLE` | Search temporarily unavailable |
-| Network / non-JSON | Generic “could not reach Atlas” / action failed |
+| code                                              | User-facing intent                                          |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `VALIDATION_ERROR`                                | Fix the input (keep modal open where applicable)            |
+| `NOT_FOUND`                                       | Resource gone — delete: success; other ops: refresh/recover |
+| `UPLOAD_*`                                        | Specific upload rejection (already partially done)          |
+| `EMBEDDING_CONFIG_MISMATCH`                       | Workspace needs documents re-processed                      |
+| `PROVIDER_UNAVAILABLE` / `PROVIDER_MISCONFIGURED` | AI service unreachable / misconfigured                      |
+| `RETRIEVAL_UNAVAILABLE`                           | Search temporarily unavailable                              |
+| Network / non-JSON                                | Generic “could not reach Atlas” / action failed             |
 
 **Rationale**: FR-011; aligns with `002` contract codes without inventing
 new ones.
 
 **Alternatives considered**:
+
 - Show only `message` with no code-specific copy — weaker for empty or
   transport-limit bodies (e.g. Spring 413 without `ApiError`).
 
@@ -109,11 +114,13 @@ new ones.
 rejection messaging need work.
 
 **Alternatives considered**:
+
 - WebSocket/SSE for ingest — unjustified complexity for local single-user.
 
 ## R7 — Testing approach
 
 **Decision**: Red–green Vitest tests first per story:
+
 1. Workspace delete: form submit does not cause navigation; modal closes;
    `deleteWorkspace` called once; last workspace deletable; error banner on
    failure; 404 treated as success.
@@ -126,6 +133,7 @@ rejection messaging need work.
 **Rationale**: Constitution I; SC-008.
 
 **Alternatives considered**:
+
 - Playwright E2E against Docker only — valuable later; Vitest covers the
   regression faster for this repair.
 
