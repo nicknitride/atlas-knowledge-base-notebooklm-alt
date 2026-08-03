@@ -160,6 +160,7 @@ public class DefaultLlmProvider implements LlmProvider {
                   state.inThinking = true;
                   if (!state.thinkingHeaderSent) {
                     chunkConsumer.accept("<thinking>\n");
+                    // TODO support this tag in the frontend
                     state.thinkingHeaderSent = true;
                   }
                 }

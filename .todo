@@ -1,62 +1,32 @@
 [
   {
-    "id": "ms46f37sdb3iq4d3cgi",
-    "text": "Improve tests",
-    "isCompleted": false,
-    "source": "codebase",
-    "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/test/java/dev/atlas/retrieval/VectorSearchServiceTest.java",
-    "line": 36,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
-    "category": "testing"
-  },
-  {
-    "id": "ms46f37so1olouxs6e9",
+    "id": "msbu3l0882r82p0e0s",
     "text": "use strategy pattern",
     "isCompleted": false,
     "source": "codebase",
     "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultLlmProvider.java",
-    "line": 32,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
+    "line": 31,
+    "dateCreated": "2026-08-02T13:26:39.128Z",
     "category": "general"
   },
   {
-    "id": "ms46f37sv5hilhls3w",
-    "text": "decide if I'm keeping this",
+    "id": "msbu3l081xgcwsi8nlq",
+    "text": "support this tag in the frontend",
     "isCompleted": false,
     "source": "codebase",
-    "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultEmbeddingProvider.java",
-    "line": 71,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
+    "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultLlmProvider.java",
+    "line": 162,
+    "dateCreated": "2026-08-02T13:26:39.128Z",
     "category": "general"
   },
   {
-    "id": "ms46f37sh8x9d604vn",
-    "text": "add an embedding model",
-    "isCompleted": false,
-    "source": "codebase",
-    "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/backend/src/main/java/dev/atlas/providers/DefaultEmbeddingProvider.java",
-    "line": 93,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
-    "category": "feature"
-  },
-  {
-    "id": "ms46f37snhk264ljl28",
-    "text": "fix messages.length===0 bug when submitting a question in a workspace with no conversation selected (docs tab selected) */}",
-    "isCompleted": false,
-    "source": "codebase",
-    "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/components/chat-panel.tsx",
-    "line": 180,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
-    "category": "bug"
-  },
-  {
-    "id": "ms46f37s8uwfo3rfbg6",
+    "id": "msbu3l08kdcjt3zptt",
     "text": "Rename Conversation Modal",
     "isCompleted": false,
     "source": "codebase",
     "file": "/Users/nicholopardines/Desktop/Github_Projects/atlas_knowledge_base/components/sidebar.tsx",
-    "line": 629,
-    "dateCreated": "2026-07-28T04:49:21.928Z",
+    "line": 1027,
+    "dateCreated": "2026-08-02T13:26:39.128Z",
     "category": "general"
   }
 ]

@@ -45,6 +45,9 @@ export default function ChatPanel({
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const lastFocusTokenRef = useRef(0);
 
+
+  const [isThinking, setIsThinking] = useState(false);
+
   const mainMode = deriveChatMainMode({
     workspaceId,
     conversationId,
@@ -143,7 +146,11 @@ export default function ChatPanel({
       activeConvId,
       userQuery,
       (_chunk) => {
-        // Token streaming reserved for a future UI pass
+        if(_chunk === "<thinking>"){
+          setIsThinking(true);
+        }else if (_chunk === "</thinking>"){
+          setIsThinking(false);
+        }
       },
       (citations) => {
         onUpdateCitations(citations);
@@ -282,13 +289,20 @@ export default function ChatPanel({
                     {message.role === "USER" ? "You" : "Atlas Assistant"}
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
-                    <Streamdown
+                    <div className="text-sm opacity-50">
+                    </div>
+                    {isThinking && <>
+                    {message.content}
+                    </>}
+                    {!isThinking && <>
+                                        <Streamdown
                       key={message.id + "-" + message.content}
                       parseIncompleteMarkdown
                       remarkPlugins={[remarkGfm]}
                     >
                       {message.content}
                     </Streamdown>
+                    </>}
                   </div>
 
                   {/* Render Citation Badges for Assistant */}
