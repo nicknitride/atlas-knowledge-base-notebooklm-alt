@@ -126,7 +126,7 @@ public class ConversationController {
       @PathVariable UUID id,
       @Valid @RequestBody StreamMessageRequest request) {
     workspaces.requireExists(workspaceId);
-    SseEmitter emitter = new SseEmitter(180_000L);
+    SseEmitter emitter = new SseEmitter(360_000L);
 
     chatService.streamChat(
         workspaceId,
