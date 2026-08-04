@@ -167,7 +167,7 @@ export default function ChatPanel({
 
         if (isThinkingRef.current) {
           // setThinkingText((prev) => prev + _chunk);
-          setThinkingText((prev) => {//This implementation accounts for 
+          setThinkingText((prev) => {//This implementation accounts for Qwen not having spaces
             if (!_chunk) return prev;
 
             // First thinking chunk: just use it as-is
@@ -308,8 +308,16 @@ export default function ChatPanel({
                 <button
                   key={suggestion}
                   type="button"
-                  onClick={() => {
-                    setInput(suggestion);
+                  onClick={async () => {
+                    if (!workspaceId) return;
+                  const conv = await createConversation(
+                    workspaceId,
+                    suggestion.substring(0, 30)
+                  );
+
+                  onConversationCreated(conv.id);
+                  setInput(suggestion);
+
                   }}
                   className="p-3 text-left rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs font-medium text-foreground/80 hover:text-foreground shadow-sm"
                 >
